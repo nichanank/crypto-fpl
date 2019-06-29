@@ -1,0 +1,21 @@
+{
+  "name": "cryptofpl-server",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "server": "nodemon app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Nichanan Kesonpat",
+  "license": "ISC",
+  "dependencies": {
+    "ejs": "^2.6.1",
+    "nodemon": "^1.19.1"
+  },
+  "devDependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "knex": "^0.17.3",
+    "mysql": "^2.17.1"
+  }
+}
