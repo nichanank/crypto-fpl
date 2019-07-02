@@ -42,10 +42,12 @@ contract CryptoFPL {
 
     mapping(uint => Game) games;
     mapping(uint => uint) balances;
-    mapping(address => uint) activeGameCount;
-    mapping(uint => uint) public recentlyCreatedGames; // Keeps track of the up to 10 latest gamesIds created
+    mapping(address => uint) activeGameIndex;
+    mapping(address => mapping(uint => uint)) activeGames; // Keeps track of each player's active games by mapping activeGameIndex to gameId
+    mapping(uint => uint) public recentlyCreatedGames; // Keeps track of up to 10 latest gamesIds created
     
-    mapping(address => mapping(uint => Commit)) gkCommits; // Maps player address to gameId and footballer selection
+    // Map player address to gameId and footballer selection
+    mapping(address => mapping(uint => Commit)) gkCommits;
     mapping(address => mapping(uint => Commit)) defCommits;
     mapping(address => mapping(uint => Commit)) midCommits;
     mapping(address => mapping(uint => Commit)) fwdCommits;
@@ -67,7 +69,7 @@ contract CryptoFPL {
     modifier enoughFunds(uint gameId) { require(msg.value >= games[gameId].wager, "Insufficient funds sent as wager"); _;}
     
     modifier validActiveGameCount() { 
-        require(msg.sender == leagueManager || activeGameCount[msg.sender] < 3, "Player already has 3 active games");
+        require(msg.sender == leagueManager || activeGameIndex[msg.sender] < 3, "Player already has 3 active games");
          _;
     }
 
@@ -118,7 +120,8 @@ contract CryptoFPL {
         } else {
             latestGameId += 1;
         }
-        activeGameCount[msg.sender] += 1;
+        activeGameIndex[msg.sender] += 1;
+        activeGames[msg.sender][activeGameIndex[msg.sender]] = gameId;
         uint change = msg.value - wager;
         msg.sender.transfer(change);
         emit LogGameCreation(msg.sender, wager, gameId);
@@ -130,7 +133,8 @@ contract CryptoFPL {
         games[gameId].player2 = msg.sender;
         games[gameId].isOpen = false;
         balances[gameId] = games[gameId].wager * 2;
-        activeGameCount[msg.sender] += 1;
+        activeGameIndex[msg.sender] += 1;
+        activeGames[msg.sender][activeGameIndex[msg.sender]] = gameId;
         emit LogGameBegin(msg.sender, gameId, balances[gameId]);
     }
 
@@ -146,6 +150,15 @@ contract CryptoFPL {
     //Return the total number of games that have ever been created
     function totalGames() public view returns (uint) {
         return idGenerator;
+    }
+
+    //Returns an array of gamesIds that a player is currently active in.
+    function viewActiveGames(address player) public view returns (uint[3] memory gameIds) {
+        uint[3] memory result;
+        for(uint i = 0; i < activeGameIndex[player]; i++) {
+            result[i] = activeGames[player][i];
+        }
+        return result;
     }
 
     //Commits a player to their team selection
@@ -270,13 +283,15 @@ contract CryptoFPL {
         return gkCommits[msg.sender][gameId].commit;
     }
   
-    //Winner can withdraw prize money at the end of the game
+    // Winner can withdraw prize money at the end of the game
     function withdrawPayout(uint gameId) public isWinner(gameId) {
         uint winnings = balances[gameId];
         balances[gameId] = 0;
         games[gameId].isFinished = true;
-        activeGameCount[msg.sender] -= 1;
-        activeGameCount[games[gameId].player2] -= 1;
+        activeGames[msg.sender][activeGameIndex[msg.sender]] = 0;
+        activeGames[games[gameId].player2][activeGameIndex[games[gameId].player2]] = 0;
+        activeGameIndex[msg.sender] -= 1;
+        activeGameIndex[games[gameId].player2] -= 1;
         msg.sender.transfer(winnings);
         emit LogPayoutSent(msg.sender, winnings);
     }
@@ -293,5 +308,5 @@ interface CryptoFPLCards {
   }
     function positionOf(uint tokenId) external returns(Position);
     function balanceOf(address addr, uint tokenId) external returns(uint);
-    // function mintTeam(address _owner, uint[] calldata ids, uint[] calldata playerPositions, uint[] calldata amounts) external payable;
+
 }
