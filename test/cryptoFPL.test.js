@@ -113,7 +113,7 @@ contract('CryptoFPL', async (accounts) => {
 
       it('should not let players create more games if they already have 3 open games', async () => {
         for (var i = 0; i < 3; i++) {
-          await instance.createGame(100, {from: player1, value: 100})  
+          await instance.createGame(100, {from: player1, value: 100})
         }
         await catchRevert(instance.createGame(100, {from: player1, value: 100}), "player shouldn't be able to create more games if their previous 3 are still open")
       })
@@ -122,7 +122,17 @@ contract('CryptoFPL', async (accounts) => {
 
     describe("Gameplay", async () => {
             
-      it('should allow team submission', async () => {
+      it('should return the correct number of active games for a given player', async () => {
+        await instance.createGame(100, {from: player1, value: 100})
+        await instance.createGame(100, {from: player1, value: 100})
+        await instance.createGame(100, {from: player1, value: 100})
+        var activeGames = await instance.viewActiveGames(player1)
+        assert.equal(activeGames[0].toNumber(), 0, 'first item in active games should be gameId 0')
+        assert.equal(activeGames[1].toNumber(), 1, 'second item in active games should be gameId 1')
+        assert.equal(activeGames[2].toNumber(), 2, 'third item in active games should be gameId 2')
+      })
+      
+      it('should allow team submission if valid', async () => {
         let ids = [1, 2, 3, 4]
         let positions = [1, 2, 3, 4]
         let amounts = [1, 1, 1, 1]
@@ -133,8 +143,25 @@ contract('CryptoFPL', async (accounts) => {
         let teamToCommit = [1, 2, 3, 4]
         await instance.commitTeam(cardContractInstance.address, teamToCommit, 0, {from: player1})
         let gkCommit = await instance.getGKCommitForGame(0, {from: player1})
-        assert.equal(gkCommit, 0, 'should return hash of 1')
+        assert.notEqual(gkCommit, 0x0000000000000000000000000000000000000000000000000000000000000000, 'should return a non-zero hash')
+      })
 
+      it('should not allow team submission if selection is not valid', async () => {
+        let ids = [1, 2, 3, 4]
+        let positions = [1, 2, 3, 4]
+        let amounts = [1, 1, 1, 1]
+        let cardContractInstance = await CryptoFPLCards.new(1819)
+        await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: 100})
+        await instance.createGame(100, {from: player1, value: 100})
+
+        let invalidTeam1 = [1, 1, 2, 3]
+        await catchRevert(instance.commitTeam(cardContractInstance.address, invalidTeam1, 0, {from: player1}), "can't have more than one player submitted for a given position")
+
+        let invalidTeam2 = [1, 2, 3]
+        await catchRevert(instance.commitTeam(cardContractInstance.address, invalidTeam2, 0, {from: player1}), "team must consist of less than 4 players")
+
+        let invalidTeam3 = [1, 2, 3, 4, 4]
+        await catchRevert(instance.commitTeam(cardContractInstance.address, invalidTeam3, 0, {from: player1}), "team can't consist of more than 4 players")
       })
       
       it('should update user scores after the gameweek has ended', async () => {

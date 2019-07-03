@@ -120,8 +120,8 @@ contract CryptoFPL {
         } else {
             latestGameId += 1;
         }
-        activeGameIndex[msg.sender] += 1;
         activeGames[msg.sender][activeGameIndex[msg.sender]] = gameId;
+        activeGameIndex[msg.sender] += 1;
         uint change = msg.value - wager;
         msg.sender.transfer(change);
         emit LogGameCreation(msg.sender, wager, gameId);
