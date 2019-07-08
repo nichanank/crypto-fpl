@@ -57,8 +57,7 @@ contract CryptoFPL {
     event LogGameBegin(address player2, uint gameId, uint totalPayout);
     event LogPlayer1TeamCommit(address player1, uint gameId, bytes32 gkHash, bytes32 defHash, bytes32 midHash, bytes32 fwdHash);
     event LogPlayer2TeamCommit(address player2, uint gameId, bytes32 gkHash, bytes32 defHash, bytes32 midHash, bytes32 fwdHash);
-    event LogRevealTeam(address sender, bytes32 revealHash, uint random);
-    // event RevealAnswer(address sender, bytes32 answer, bytes32 salt);
+    event LogTeamReveal(address sender, bytes32 gkReveal, bytes32 defReveal, bytes32 midReveal, bytes32 fwdReveal, bytes32 salt);
     event LogGameEnd(address winner, uint winningScore, uint losingScore);
     event LogPayoutSent(address winner, uint balance);
 
@@ -133,8 +132,8 @@ contract CryptoFPL {
         games[gameId].player2 = msg.sender;
         games[gameId].isOpen = false;
         balances[gameId] = games[gameId].wager * 2;
-        activeGameIndex[msg.sender] += 1;
         activeGames[msg.sender][activeGameIndex[msg.sender]] = gameId;
+        activeGameIndex[msg.sender] += 1;
         emit LogGameBegin(msg.sender, gameId, balances[gameId]);
     }
 
@@ -162,62 +161,32 @@ contract CryptoFPL {
     }
 
     //Commits a player to their team selection
-    function commitTeam(address cardContractAddr, uint[] memory tokenIds, uint gameId) public isPlayer(gameId) {
-        require(tokenIds.length == 4, "invalid team size");
-        CryptoFPLCards cardContract = CryptoFPLCards(cardContractAddr);
-        
-        uint gkCount = 0;
-        uint defCount = 0;
-        uint midCount = 0;
-        uint fwdCount = 0;
+    function commitTeam(bytes32 gkHash, bytes32 defHash, bytes32 midHash, bytes32 fwdHash, uint gameId) public isPlayer(gameId) {
 
-        bytes32 gkHash;
-        bytes32 defHash;
-        bytes32 midHash;
-        bytes32 fwdHash;
+        gkCommits[msg.sender][gameId] = Commit({
+            commit: gkHash,
+            block: uint64(block.number),
+            revealed: false
+        });
 
-        CryptoFPLCards.Position position;
-        
-        //Check that team contains exactly one player in each position
-        for (uint i = 0; i < 4; i++) {
-            // require(cardContract.balanceOf(msg.sender, tokenIds[i]) > 0); //Make sure the player actually owns these tokens
-            position = cardContract.positionOf(tokenIds[i]);
-            if (position == CryptoFPLCards.Position.Goalkeeper) {
-                gkCount += 1;
-                gkHash = keccak256(abi.encodePacked(address(this), tokenIds[i]));
-                gkCommits[msg.sender][gameId] = Commit({
-                    commit: gkHash,
-                    block: uint64(block.number),
-                    revealed: false
-                });
-            } else if (position == CryptoFPLCards.Position.Defender) {
-                defCount += 1;
-                defHash = keccak256(abi.encodePacked(address(this), tokenIds[i]));
-                defCommits[msg.sender][gameId] = Commit({
-                    commit: defHash,
-                    block: uint64(block.number),
-                    revealed: false
-                });
-            } else if (position == CryptoFPLCards.Position.Midfielder) {
-                midCount += 1;
-                midHash = keccak256(abi.encodePacked(address(this), tokenIds[i]));
-                midCommits[msg.sender][gameId] = Commit({
-                    commit: midHash,
-                    block: uint64(block.number),
-                    revealed: false
-                });
-            } else {
-                fwdCount += 1;
-                fwdHash = keccak256(abi.encodePacked(address(this), tokenIds[i]));
-                fwdCommits[msg.sender][gameId] = Commit({
-                    commit: fwdHash,
-                    block: uint64(block.number),
-                    revealed: false
-                });
-            }
-        }
-        require(gkCount == 1 && defCount == 1 && midCount == 1 && fwdCount == 1, "invalid team submitted");
-        
+        defCommits[msg.sender][gameId] = Commit({
+            commit: defHash,
+            block: uint64(block.number),
+            revealed: false
+        });
+
+        midCommits[msg.sender][gameId] = Commit({
+            commit: midHash,
+            block: uint64(block.number),
+            revealed: false
+        });
+
+        fwdCommits[msg.sender][gameId] = Commit({
+            commit: fwdHash,
+            block: uint64(block.number),
+            revealed: false
+        });   
+
         if (msg.sender == games[gameId].player1) {
             emit LogPlayer1TeamCommit(msg.sender, gameId, gkHash, defHash, midHash, fwdHash);
         } else {
@@ -225,62 +194,50 @@ contract CryptoFPL {
         }
     }
 
-    // function reveal(bytes32 revealHash, uint gameId) public {
-    //     //make sure it hasn't been revealed yet and set it to revealed
-    //     require(
-    //         gkCommits[msg.sender][gameId].revealed == false &&
-    //         defCommits[msg.sender][gameId].revealed == false &&
-    //         midCommits[msg.sender][gameId].revealed == false &&
-    //         fwdCommits[msg.sender][gameId].revealed == false, "CommitReveal::reveal: Already revealed"
-    //         );
-    //     gkCommits[msg.sender][gameId].revealed = true;
-    //     defCommits[msg.sender][gameId].revealed = true;
-    //     midCommits[msg.sender][gameId].revealed = true;
-    //     fwdCommits[msg.sender][gameId].revealed = true;
-        
-    //     //require that they can produce the committed hash
-    //     require(
-    //         getHash(revealHash) == gkCommits[msg.sender][gameId].commit &&
-    //         getHash(revealHash) == defCommits[msg.sender][gameId].commit &&
-    //         getHash(revealHash) == midCommits[msg.sender][gameId].commit &&
-    //         getHash(revealHash) == fwdCommits[msg.sender][gameId].commit, "CommitReveal::reveal: Revealed hash does not match commit" 
-    //     );
-        
-    //     //require that the block number is greater than the original block
-    //     require(uint64(block.number) > gkCommits[msg.sender][gameId].block, "CommitReveal::reveal: Reveal and commit happened on the same block");
-        
-    //     //require that no more than 250 blocks have passed
-    //     require(uint64(block.number) <= gkCommits[msg.sender][gameId].block + 250, "CommitReveal::reveal: Revealed too late");
-        
-    //     //get the hash of the block that happened after they committed
-    //     bytes32 blockHash = blockhash(gkCommits[msg.sender][gameId].block);
-        
-    //     //hash that with their reveal that so miner shouldn't know and mod it with some max number you want
-    //     uint random = uint(keccak256(abi.encodePacked(blockHash, revealHash))) % 1000;
-    //     emit LogRevealTeam(msg.sender, revealHash, random);
-    // }
-
-    function getHash(bytes32 data) public view returns(bytes32){
-        return keccak256(abi.encodePacked(address(this), data));
-    }
-
-    function getSaltedHash(bytes32 data,bytes32 salt) public view returns(bytes32){
+    function getSaltedHash(bytes32 data, bytes32 salt) public view returns(bytes32){
         return keccak256(abi.encodePacked(address(this), data, salt));
     }
     
-    // function revealAnswer(bytes32 answer, uint gameId, bytes32 salt) public {
+    function revealTeam(bytes32 gkReveal, bytes32 defReveal, bytes32 midReveal, bytes32 fwdReveal, uint gameId, bytes32 salt) public {        
         
-    //     //make sure it hasn't been revealed yet and set it to revealed
-    //     require(commits[msg.sender][gameId].revealed == false, "CommitReveal::revealAnswer: Already revealed");
-    //     commits[msg.sender][gameId].revealed=true;
+        //make sure it hasn't been revealed yet and set it to revealed
+        require(
+            gkCommits[msg.sender][gameId].revealed == false &&
+            defCommits[msg.sender][gameId].revealed == false &&
+            midCommits[msg.sender][gameId].revealed == false &&
+            fwdCommits[msg.sender][gameId].revealed == false, "CommitReveal::revealAnswer: Already revealed"
+            );
         
-    //     //require that they can produce the committed hash
-    //     require(getSaltedHash(answer,salt) == commits[msg.sender][gameId].commit, "CommitReveal::revealAnswer: Revealed hash does not match commit");
-    //     emit RevealAnswer(msg.sender, answer, salt);
-    // }
-     
-    function getGKCommitForGame(uint gameId) public view returns(bytes32) {
-        return gkCommits[msg.sender][gameId].commit;
+        //require that they can produce the committed hash
+        require(
+            getSaltedHash(gkReveal, salt) == gkCommits[msg.sender][gameId].commit &&
+            getSaltedHash(defReveal, salt) == defCommits[msg.sender][gameId].commit &&
+            getSaltedHash(midReveal, salt) == midCommits[msg.sender][gameId].commit &&
+            getSaltedHash(fwdReveal, salt) == fwdCommits[msg.sender][gameId].commit, "CommitReveal::revealAnswer: Revealed hash does not match commit"
+            );
+        
+        gkCommits[msg.sender][gameId].revealed = true;
+        defCommits[msg.sender][gameId].revealed = true;
+        midCommits[msg.sender][gameId].revealed = true;
+        fwdCommits[msg.sender][gameId].revealed = true;
+        
+        emit LogTeamReveal(msg.sender, gkReveal, defReveal, midReveal, fwdReveal, salt);
+    }
+
+    function getTeamCommitForGame(uint gameId) public view returns(bytes32[4] memory commits) {
+        bytes32 gkCommit = gkCommits[msg.sender][gameId].commit;
+        bytes32 defCommit = defCommits[msg.sender][gameId].commit;
+        bytes32 midCommit = midCommits[msg.sender][gameId].commit;
+        bytes32 fwdCommit = fwdCommits[msg.sender][gameId].commit;
+        return [gkCommit, defCommit, midCommit, fwdCommit];
+    }
+
+    // Checks if the player's team has been revealed for a given game
+    function teamRevealed(uint gameId) public view returns(bool) {
+        return (gkCommits[msg.sender][gameId].revealed && 
+                defCommits[msg.sender][gameId].revealed && 
+                midCommits[msg.sender][gameId].revealed && 
+                fwdCommits[msg.sender][gameId].revealed);
     }
   
     // Winner can withdraw prize money at the end of the game

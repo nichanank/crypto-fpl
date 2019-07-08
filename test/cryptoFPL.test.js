@@ -2,7 +2,6 @@ const CryptoFPL = artifacts.require("./contracts/CryptoFPL.sol")
 const CryptoFPLCards = artifacts.require("./contracts/CryptoFPLCards.sol")
 let catchRevert = require("./exceptionHelpers.js").catchRevert
 
-
 const BigNumber = web3.BigNumber;
 const maxNumber = '115792089237316195423570985008687907853269984665640564039457584007913129639935'
 
@@ -132,43 +131,81 @@ contract('CryptoFPL', async (accounts) => {
         assert.equal(activeGames[2].toNumber(), 2, 'third item in active games should be gameId 2')
       })
       
-      it('should allow team submission if valid', async () => {
+      it('should let users commit their selected team', async () => {
         let ids = [1, 2, 3, 4]
         let positions = [1, 2, 3, 4]
         let amounts = [1, 1, 1, 1]
         let cardContractInstance = await CryptoFPLCards.new(1819)
+        let salt = web3.utils.sha3("1")
         await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: 100})
         await instance.createGame(100, {from: player1, value: 100})
+
+        let teamHashes = {}
+        teamHashes['gk'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[0]), salt)
+        teamHashes['def'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[1]), salt)
+        teamHashes['mid'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[2]), salt)
+        teamHashes['fwd'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[3]), salt)
+
+        await instance.commitTeam(teamHashes['gk'], teamHashes['def'], teamHashes['mid'], teamHashes['fwd'], 0, { from: player1 })
+        let teamCommit = await instance.getTeamCommitForGame(0, { from: player1 } )
+        assert.equal(teamCommit.length, 4, "invalid returned array for team commit")
+        assert.notEqual(teamCommit[0], 0x0000000000000000000000000000000000000000000000000000000000000000, 'gkCommit should return be non-zero hash')
+        assert.notEqual(teamCommit[1], 0x0000000000000000000000000000000000000000000000000000000000000000, 'defCommit should return be non-zero hash')
+        assert.notEqual(teamCommit[2], 0x0000000000000000000000000000000000000000000000000000000000000000, 'midCommit should return be non-zero hash')
+        assert.notEqual(teamCommit[3], 0x0000000000000000000000000000000000000000000000000000000000000000, 'fwdCommit should return be non-zero hash')
         
-        let teamToCommit = [1, 2, 3, 4]
-        await instance.commitTeam(cardContractInstance.address, teamToCommit, 0, {from: player1})
-        let gkCommit = await instance.getGKCommitForGame(0, {from: player1})
-        assert.notEqual(gkCommit, 0x0000000000000000000000000000000000000000000000000000000000000000, 'should return a non-zero hash')
       })
 
-      it('should not allow team submission if selection is not valid', async () => {
+      it('should let users reveal their selected team if the submitted hashes are valid', async () => {
         let ids = [1, 2, 3, 4]
         let positions = [1, 2, 3, 4]
         let amounts = [1, 1, 1, 1]
+        let salt = web3.utils.sha3("1")
         let cardContractInstance = await CryptoFPLCards.new(1819)
         await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: 100})
         await instance.createGame(100, {from: player1, value: 100})
 
-        let invalidTeam1 = [1, 1, 2, 3]
-        await catchRevert(instance.commitTeam(cardContractInstance.address, invalidTeam1, 0, {from: player1}), "can't have more than one player submitted for a given position")
+        let teamHashes = {}
+        teamHashes['gk'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[0]), salt)
+        teamHashes['def'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[1]), salt)
+        teamHashes['mid'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[2]), salt)
+        teamHashes['fwd'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[3]), salt)
 
-        let invalidTeam2 = [1, 2, 3]
-        await catchRevert(instance.commitTeam(cardContractInstance.address, invalidTeam2, 0, {from: player1}), "team must consist of less than 4 players")
+        await instance.commitTeam(teamHashes['gk'], teamHashes['def'], teamHashes['mid'], teamHashes['fwd'], 0, { from: player1 })
+        await instance.revealTeam(web3.utils.utf8ToHex(ids[0]), web3.utils.utf8ToHex(ids[1]), web3.utils.utf8ToHex(ids[2]), web3.utils.utf8ToHex(ids[03]), 0, salt, { from: player1 })
 
-        let invalidTeam3 = [1, 2, 3, 4, 4]
-        await catchRevert(instance.commitTeam(cardContractInstance.address, invalidTeam3, 0, {from: player1}), "team can't consist of more than 4 players")
+        var teamRevealed = await instance.teamRevealed(0, { from: player1 })
+        assert.equal(teamRevealed, true, "team has not been revealed")
       })
       
-      it('should update user scores after the gameweek has ended', async () => {
+      it('should not let player reveal their team if revealHash is not valid', async () => {
+        let ids = [1, 2, 3, 4]
+        let positions = [1, 2, 3, 4]
+        let amounts = [1, 1, 1, 1]
+        let salt = web3.utils.sha3("1")
+        let cardContractInstance = await CryptoFPLCards.new(1819)
+        await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: 100})
+        await instance.createGame(100, {from: player1, value: 100})
 
+        let teamHashes = {}
+        teamHashes['gk'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[0]), salt)
+        teamHashes['def'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[1]), salt)
+        teamHashes['mid'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[2]), salt)
+        teamHashes['fwd'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[3]), salt)
+
+        await instance.commitTeam(teamHashes['gk'], teamHashes['def'], teamHashes['mid'], teamHashes['fwd'], 0, { from: player1 })
+
+        let incorrectGkReveal = web3.utils.sha3("" + ids[2])
+        let correctDefReveal = web3.utils.sha3("" + ids[1])
+        let correctMidReveal = web3.utils.sha3("" + ids[2])
+        let correctFwdReveal = web3.utils.sha3("" + ids[3])
+        await catchRevert(instance.revealTeam(incorrectGkReveal, correctDefReveal, correctMidReveal, correctFwdReveal, 0, salt, { from: player1 }), "should have reverted due to invalid revealHash")
+        
+        var teamRevealed = await instance.teamRevealed(0, { from: player1 })
+        assert.notEqual(teamRevealed, true, "team should not have been revealed")
       })
 
-      it('should let users commit their selected team', async () => {
+      it('should update user scores after the gameweek has ended', async () => {
 
       })
 
