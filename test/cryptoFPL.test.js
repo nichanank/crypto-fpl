@@ -188,10 +188,10 @@ contract('CryptoFPL', async (accounts) => {
         await instance.createGame(100, {from: player1, value: 100})
 
         let teamHashes = {}
-        teamHashes['gk'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[0]), salt)
-        teamHashes['def'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[1]), salt)
-        teamHashes['mid'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[2]), salt)
-        teamHashes['fwd'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[3]), salt)
+        teamHashes['gk'] = await instance.getSaltedHash(web3.utils.numberToHex(ids[0]), salt)
+        teamHashes['def'] = await instance.getSaltedHash(web3.utils.numberToHex(ids[1]), salt)
+        teamHashes['mid'] = await instance.getSaltedHash(web3.utils.numberToHex(ids[2]), salt)
+        teamHashes['fwd'] = await instance.getSaltedHash(web3.utils.numberToHex(ids[3]), salt)
 
         await instance.commitTeam(teamHashes['gk'], teamHashes['def'], teamHashes['mid'], teamHashes['fwd'], 0, { from: player1 })
 
@@ -203,6 +203,7 @@ contract('CryptoFPL', async (accounts) => {
         
         var teamRevealed = await instance.teamRevealed(0, { from: player1 })
         assert.notEqual(teamRevealed, true, "team should not have been revealed")
+        assert.notEqual(teamHashes['gk'], 0x00000000000000000000000000000000)
       })
 
       it('should update user scores after the gameweek has ended', async () => {

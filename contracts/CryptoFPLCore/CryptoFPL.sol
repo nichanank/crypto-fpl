@@ -57,7 +57,7 @@ contract CryptoFPL {
     event LogGameBegin(address player2, uint gameId, uint totalPayout);
     event LogPlayer1TeamCommit(address player1, uint gameId, bytes32 gkHash, bytes32 defHash, bytes32 midHash, bytes32 fwdHash);
     event LogPlayer2TeamCommit(address player2, uint gameId, bytes32 gkHash, bytes32 defHash, bytes32 midHash, bytes32 fwdHash);
-    event LogTeamReveal(address sender, bytes32 gkReveal, bytes32 defReveal, bytes32 midReveal, bytes32 fwdReveal, bytes32 salt);
+    event LogTeamReveal(address sender, bytes gkReveal, bytes defReveal, bytes midReveal, bytes fwdReveal, bytes salt);
     event LogGameEnd(address winner, uint winningScore, uint losingScore);
     event LogPayoutSent(address winner, uint balance);
 
@@ -194,11 +194,11 @@ contract CryptoFPL {
         }
     }
 
-    function getSaltedHash(bytes32 data, bytes32 salt) public view returns(bytes32){
+    function getSaltedHash(bytes memory data, bytes memory salt) public view returns(bytes32){
         return keccak256(abi.encodePacked(address(this), data, salt));
     }
     
-    function revealTeam(bytes32 gkReveal, bytes32 defReveal, bytes32 midReveal, bytes32 fwdReveal, uint gameId, bytes32 salt) public {        
+    function revealTeam(bytes memory gkReveal, bytes memory defReveal, bytes memory midReveal, bytes memory fwdReveal, uint gameId, bytes memory salt) public isPlayer(gameId) {        
         
         //make sure it hasn't been revealed yet and set it to revealed
         require(
@@ -215,6 +215,7 @@ contract CryptoFPL {
             getSaltedHash(midReveal, salt) == midCommits[msg.sender][gameId].commit &&
             getSaltedHash(fwdReveal, salt) == fwdCommits[msg.sender][gameId].commit, "CommitReveal::revealAnswer: Revealed hash does not match commit"
             );
+
         
         gkCommits[msg.sender][gameId].revealed = true;
         defCommits[msg.sender][gameId].revealed = true;
