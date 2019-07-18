@@ -125,7 +125,7 @@ contract('CryptoFPL', async (accounts) => {
         await instance.createGame(100, {from: player1, value: 100})
         await instance.createGame(100, {from: player1, value: 100})
         await instance.createGame(100, {from: player1, value: 100})
-        var activeGames = await instance.viewActiveGames(player1)
+        var activeGames = await instance.viewActiveGames({from: player1})
         assert.equal(activeGames[0].toNumber(), 0, 'first item in active games should be gameId 0')
         assert.equal(activeGames[1].toNumber(), 1, 'second item in active games should be gameId 1')
         assert.equal(activeGames[2].toNumber(), 2, 'third item in active games should be gameId 2')
@@ -203,7 +203,7 @@ contract('CryptoFPL', async (accounts) => {
         
         var teamRevealed = await instance.teamRevealed(0, { from: player1 })
         assert.notEqual(teamRevealed, true, "team should not have been revealed")
-        assert.notEqual(teamHashes['gk'], 0x00000000000000000000000000000000)
+        assert.notEqual(teamHashes['gk'], 0x0000000000000000000000000000000000000000000000000000000000000000)
       })
 
       it('should update user scores after the gameweek has ended', async () => {

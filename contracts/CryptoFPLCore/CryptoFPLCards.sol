@@ -103,34 +103,4 @@ contract CryptoFPLCards is Ownable, ERC1155MintBurn, ERC1155Metadata, CryptoFPL1
     return positions[tokenId];
   }
 
-  // //Populates rating mapping of footballer
-  // function _setRating(uint32 tokenId, Rating rating) private {
-  //   require(ratings[tokenId] != 0);
-  //   ratings[tokenId] = rating;
-  // }
-
-  // function mintFootballer(address _owner, Rating _rating, Position _position, string memory _uri) public onlyOwner {
-  //   return _mintFootballer(_owner, _rating, _position, _uri);
-  // }
-
-  // function _mintFootballer(address _owner, Rating _rating, Position _position, string memory _uri) private {
-    
-  //   Footballer memory _footballer = Footballer({
-  //     rating: _rating,
-  //     position: _position
-  //   });
-    
-  //   uint256 newFootballerId = footballers.push(_footballer) - 1;
-  //   require(newFootballerId == uint256(uint32(newFootballerId)));
-    
-  //   _mint(_owner, newFootballerId);
-  //   _setTokenURI(newFootballerId, _uri);
-  //   emit PlayerMinted(newFootballerId, _position, _owner);
-  // }
-
-  // function viewFootballer(uint256 tokenId) external view returns (Footballer memory) {
-  //   require(_exists(tokenId));
-  //   return footballers[tokenId];
-  // }
-
 }
