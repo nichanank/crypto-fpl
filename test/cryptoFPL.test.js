@@ -147,7 +147,7 @@ contract('CryptoFPL', async (accounts) => {
         teamHashes['fwd'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[3]), salt)
 
         await instance.commitTeam(teamHashes['gk'], teamHashes['def'], teamHashes['mid'], teamHashes['fwd'], 0, { from: player1 })
-        let teamCommit = await instance.getTeamCommitForGame(0, { from: player1 } )
+        let teamCommit = await instance.getTeamCommitForGame(0, player1 )
         assert.equal(teamCommit.length, 4, "invalid returned array for team commit")
         assert.notEqual(teamCommit[0], 0x0000000000000000000000000000000000000000000000000000000000000000, 'gkCommit should return be non-zero hash')
         assert.notEqual(teamCommit[1], 0x0000000000000000000000000000000000000000000000000000000000000000, 'defCommit should return be non-zero hash')
@@ -174,7 +174,7 @@ contract('CryptoFPL', async (accounts) => {
         await instance.commitTeam(teamHashes['gk'], teamHashes['def'], teamHashes['mid'], teamHashes['fwd'], 0, { from: player1 })
         await instance.revealTeam(web3.utils.utf8ToHex(ids[0]), web3.utils.utf8ToHex(ids[1]), web3.utils.utf8ToHex(ids[2]), web3.utils.utf8ToHex(ids[03]), 0, salt, 15, { from: player1 })
 
-        var teamRevealed = await instance.teamRevealed(0, { from: player1 })
+        var teamRevealed = await instance.teamRevealed(0, player1)
         assert.equal(teamRevealed, true, "team has not been revealed")
       })
       
@@ -201,13 +201,43 @@ contract('CryptoFPL', async (accounts) => {
         let correctFwdReveal = web3.utils.sha3("" + ids[3])
         await catchRevert(instance.revealTeam(incorrectGkReveal, correctDefReveal, correctMidReveal, correctFwdReveal, 0, salt, 15, { from: player1 }), "should have reverted due to invalid revealHash")
         
-        var teamRevealed = await instance.teamRevealed(0, { from: player1 })
+        var teamRevealed = await instance.teamRevealed(0, player1)
         assert.notEqual(teamRevealed, true, "team should not have been revealed")
         assert.notEqual(teamHashes['gk'], 0x0000000000000000000000000000000000000000000000000000000000000000)
       })
 
-      it('should update user scores after the gameweek has ended', async () => {
+      it('should record the player score upon team reveal', async () => {
+        let ids = [1, 2, 3, 4]
+        let positions = [1, 2, 3, 4]
+        let amounts = [1, 1, 1, 1]
+        let salt = web3.utils.sha3("1")
+        let cardContractInstance = await CryptoFPLCards.new(1819)
+        
+        await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: 100})
+        await cardContractInstance.mintTeam(player2, ids, positions, amounts, {value: 100})
+        
+        await instance.createGame(100, {from: player1, value: 100})
+        await instance.joinGame(0, {from: player2, value: 100})
 
+        let teamHashes = {}
+        teamHashes['gk'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[0]), salt)
+        teamHashes['def'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[1]), salt)
+        teamHashes['mid'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[2]), salt)
+        teamHashes['fwd'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[3]), salt)
+
+        await instance.commitTeam(teamHashes['gk'], teamHashes['def'], teamHashes['mid'], teamHashes['fwd'], 0, { from: player1 })
+        await instance.commitTeam(teamHashes['gk'], teamHashes['def'], teamHashes['mid'], teamHashes['fwd'], 0, { from: player2 })
+        
+        //Reveal team with dummy scores
+        await instance.revealTeam(web3.utils.utf8ToHex(ids[0]), web3.utils.utf8ToHex(ids[1]), web3.utils.utf8ToHex(ids[2]), web3.utils.utf8ToHex(ids[03]), 0, salt, 20, { from: player1 })
+        await instance.revealTeam(web3.utils.utf8ToHex(ids[0]), web3.utils.utf8ToHex(ids[1]), web3.utils.utf8ToHex(ids[2]), web3.utils.utf8ToHex(ids[03]), 0, salt, 15, { from: player2 })
+        let player1Revealed = await instance.teamRevealed(0, player1)
+        let player2Revealed = await instance.teamRevealed(0, player2)
+        assert.equal(player1Revealed, true, "Player 1's team should have been marked as revealed")
+        assert.equal(player2Revealed, true, "Player 2's team should have been marked as revealed")
+        
+        let winner = await instance.viewWinner(0)
+        assert.equal(winner, player1, "Player1 should be the returned winner")
       })
 
       // it('should let the league manager update the gameweek', async () => {

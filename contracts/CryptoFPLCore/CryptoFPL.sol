@@ -83,6 +83,7 @@ contract CryptoFPL is usingOraclize {
     modifier enoughFunds(uint gameId) { require(msg.value >= games[gameId].wager, "Insufficient funds sent as wager"); _;}
     modifier isLeagueManager() { require(msg.sender == leagueManager, "Only the league manager can perform this action"); _; }
     modifier bothTeamsSubmitted(uint gameId) { require(games[gameId].player1TeamSubmitted == true && games[gameId].player2TeamSubmitted == true, "Both players are required to have submitted a team"); _; }
+    modifier bothTeamsRevealed(uint gameId) { require(games[gameId].player1TeamRevealed == true && games[gameId].player2TeamRevealed == true, "Both players are required to have revealed their teams"); _; }
     modifier validActiveGameCount() { 
         require(msg.sender == leagueManager || activeGameIndex[msg.sender] < 3, "Player already has 3 active games");
          _;
@@ -294,11 +295,11 @@ contract CryptoFPL is usingOraclize {
         emit LogTeamReveal(msg.sender, gkReveal, defReveal, midReveal, fwdReveal, salt);
     }
 
-    function getTeamCommitForGame(uint gameId) public view returns(bytes32[4] memory commits) {
-        bytes32 gkCommit = gkCommits[msg.sender][gameId].commit;
-        bytes32 defCommit = defCommits[msg.sender][gameId].commit;
-        bytes32 midCommit = midCommits[msg.sender][gameId].commit;
-        bytes32 fwdCommit = fwdCommits[msg.sender][gameId].commit;
+    function getTeamCommitForGame(uint gameId, address player) public view returns(bytes32[4] memory commits) {
+        bytes32 gkCommit = gkCommits[player][gameId].commit;
+        bytes32 defCommit = defCommits[player][gameId].commit;
+        bytes32 midCommit = midCommits[player][gameId].commit;
+        bytes32 fwdCommit = fwdCommits[player][gameId].commit;
         return [gkCommit, defCommit, midCommit, fwdCommit];
     }
 
@@ -307,15 +308,14 @@ contract CryptoFPL is usingOraclize {
     */
 
     // Checks if the player's team has been revealed for a given game
-    function teamRevealed(uint gameId) public view returns(bool) {
-        return (gkCommits[msg.sender][gameId].revealed && 
-                defCommits[msg.sender][gameId].revealed && 
-                midCommits[msg.sender][gameId].revealed && 
-                fwdCommits[msg.sender][gameId].revealed);
+    function teamRevealed(uint gameId, address player) public view returns(bool) {
+        return (gkCommits[player][gameId].revealed && 
+                defCommits[player][gameId].revealed && 
+                midCommits[player][gameId].revealed && 
+                fwdCommits[player][gameId].revealed);
     }
 
-    function declareWinner(uint gameId) internal {
-        require(games[gameId].player1TeamRevealed && games[gameId].player2TeamRevealed);
+    function declareWinner(uint gameId) internal bothTeamsRevealed(gameId) {
         if (games[gameId].player1Score > games[gameId].player2Score) {
             games[gameId].player1Wins = true;
         } else if (games[gameId].player1Score < games[gameId].player2Score) {
@@ -323,6 +323,14 @@ contract CryptoFPL is usingOraclize {
         } else {
             games[gameId].player1Wins = true;
             games[gameId].player2Wins = true;
+        }
+    }
+
+    function viewWinner(uint gameId) public view bothTeamsRevealed(gameId) returns(address winner) {
+        if (games[gameId].player1Wins) {
+            return games[gameId].player1;
+        } else {
+            return games[gameId].player2;
         }
     }
   
