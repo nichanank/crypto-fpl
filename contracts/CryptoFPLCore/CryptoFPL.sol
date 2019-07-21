@@ -22,6 +22,8 @@ contract CryptoFPL is usingOraclize {
     //Storage variables
     address payable public leagueManager;
     uint entryFee;
+    uint gameweek = 0;
+    uint deadline = 1565373600; // Gameweek deadline epoch
     uint idGenerator; // Keep track of game ids
     uint latestGameId; // Keep track of recently created game mappings
     
@@ -43,6 +45,8 @@ contract CryptoFPL is usingOraclize {
         uint player2Score;
         bool player1TeamSubmitted;
         bool player2TeamSubmitted;
+        bool player1TeamRevealed;
+        bool player2TeamRevealed;
         bool player1Wins;
         bool player2Wins;
         bool isOpen;
@@ -62,6 +66,8 @@ contract CryptoFPL is usingOraclize {
     mapping(address => mapping(uint => Commit)) fwdCommits;
 
     //Events
+    event LogNewOraclizeQuery(string message);
+    event LogNewGameweekBegin(uint gameweek, uint deadline);
     event LogGameCreation(address player1, uint wager, uint gameId);
     event LogGameBegin(address player2, uint gameId, uint totalPayout);
     event LogPlayer1TeamCommit(address player1, uint gameId, bytes32 gkHash, bytes32 defHash, bytes32 midHash, bytes32 fwdHash);
@@ -81,8 +87,8 @@ contract CryptoFPL is usingOraclize {
         require(msg.sender == leagueManager || activeGameIndex[msg.sender] < 3, "Player already has 3 active games");
          _;
     }
-    modifier stopInEmergency() { require(!paused) _; }
-    modifier onlyInEmergency() { require(paused) _; }
+    modifier stopInEmergency() { require(!paused, "Cannot execute this function when the contract is paused"); _; }
+    modifier onlyInEmergency() { require(paused, "This function can only be executed if the contract has been paused"); _; }
 
     //Refund player 2 if they send in an amount exceeding the stated wager
     modifier checkValue(uint gameId) {
@@ -105,10 +111,28 @@ contract CryptoFPL is usingOraclize {
         idGenerator = 0;
         latestGameId = 0;
     }
+    
+    /* 
+        ADMIN
+     */
 
     function toggleContractPause() public isLeagueManager() {
-    paused = !paused;
-}
+        paused = !paused;
+    }
+
+    // function updateGameweek() public isLeagueManager() {
+    //     // oraclize_query("URL", "http://slimy-chipmunk-20.localtunnel.me/api/gameweeks/1/deadline");
+    //     oraclize_query("URL", "https://api.kraken.com/0/public/Ticker?pair=ETHXBT");
+
+    //     emit LogNewOraclizeQuery("Oraclize query was sent, standing by for the answer...");
+    // }
+
+    // function __callback(bytes32 _myid, string memory _res) public {
+    //     // require(msg.sender == oraclize_cbAddress());
+    //     gameweek += 1;
+    //     deadline = parseInt(_res);
+    //     emit LogNewGameweekBegin(gameweek, deadline);
+    // }
 
     /* 
         GAME ENTRY: Players can create a game by depositing a wager and wait for another player to join the game.
@@ -131,6 +155,8 @@ contract CryptoFPL is usingOraclize {
             player2Score: 0,
             player1TeamSubmitted: false,
             player2TeamSubmitted: false,
+            player1TeamRevealed: false,
+            player2TeamRevealed: false,
             player1Wins: false,
             player2Wins: false,
             isOpen: true,
@@ -228,7 +254,7 @@ contract CryptoFPL is usingOraclize {
         return keccak256(abi.encodePacked(address(this), data, salt));
     }
     
-    function revealTeam(bytes memory gkReveal, bytes memory defReveal, bytes memory midReveal, bytes memory fwdReveal, uint gameId, bytes memory salt) public isPlayer(gameId) stopInEmergency() {        
+    function revealTeam(bytes memory gkReveal, bytes memory defReveal, bytes memory midReveal, bytes memory fwdReveal, uint gameId, bytes memory salt, uint totalScore) public isPlayer(gameId) stopInEmergency() {        
         
         //make sure it hasn't been revealed yet and set it to revealed
         require(
@@ -250,7 +276,21 @@ contract CryptoFPL is usingOraclize {
         defCommits[msg.sender][gameId].revealed = true;
         midCommits[msg.sender][gameId].revealed = true;
         fwdCommits[msg.sender][gameId].revealed = true;
-        
+
+        //Determine the winner if both players have submitted their scores.
+        if (msg.sender == games[gameId].player1) {
+            games[gameId].player1Score = totalScore;
+            games[gameId].player1TeamRevealed = true;
+            if (games[gameId].player2TeamRevealed) {
+                declareWinner(gameId);
+            }
+        } else {
+            games[gameId].player2Score = totalScore;
+            games[gameId].player2TeamRevealed = true;
+            if (games[gameId].player1TeamRevealed) {
+                declareWinner(gameId);
+            }
+        }
         emit LogTeamReveal(msg.sender, gkReveal, defReveal, midReveal, fwdReveal, salt);
     }
 
@@ -272,6 +312,18 @@ contract CryptoFPL is usingOraclize {
                 defCommits[msg.sender][gameId].revealed && 
                 midCommits[msg.sender][gameId].revealed && 
                 fwdCommits[msg.sender][gameId].revealed);
+    }
+
+    function declareWinner(uint gameId) internal {
+        require(games[gameId].player1TeamRevealed && games[gameId].player2TeamRevealed);
+        if (games[gameId].player1Score > games[gameId].player2Score) {
+            games[gameId].player1Wins = true;
+        } else if (games[gameId].player1Score < games[gameId].player2Score) {
+            games[gameId].player2Wins = true;
+        } else {
+            games[gameId].player1Wins = true;
+            games[gameId].player2Wins = true;
+        }
     }
   
     // Winner can withdraw prize money at the end of the game

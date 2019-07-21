@@ -172,7 +172,7 @@ contract('CryptoFPL', async (accounts) => {
         teamHashes['fwd'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[3]), salt)
 
         await instance.commitTeam(teamHashes['gk'], teamHashes['def'], teamHashes['mid'], teamHashes['fwd'], 0, { from: player1 })
-        await instance.revealTeam(web3.utils.utf8ToHex(ids[0]), web3.utils.utf8ToHex(ids[1]), web3.utils.utf8ToHex(ids[2]), web3.utils.utf8ToHex(ids[03]), 0, salt, { from: player1 })
+        await instance.revealTeam(web3.utils.utf8ToHex(ids[0]), web3.utils.utf8ToHex(ids[1]), web3.utils.utf8ToHex(ids[2]), web3.utils.utf8ToHex(ids[03]), 0, salt, 15, { from: player1 })
 
         var teamRevealed = await instance.teamRevealed(0, { from: player1 })
         assert.equal(teamRevealed, true, "team has not been revealed")
@@ -199,7 +199,7 @@ contract('CryptoFPL', async (accounts) => {
         let correctDefReveal = web3.utils.sha3("" + ids[1])
         let correctMidReveal = web3.utils.sha3("" + ids[2])
         let correctFwdReveal = web3.utils.sha3("" + ids[3])
-        await catchRevert(instance.revealTeam(incorrectGkReveal, correctDefReveal, correctMidReveal, correctFwdReveal, 0, salt, { from: player1 }), "should have reverted due to invalid revealHash")
+        await catchRevert(instance.revealTeam(incorrectGkReveal, correctDefReveal, correctMidReveal, correctFwdReveal, 0, salt, 15, { from: player1 }), "should have reverted due to invalid revealHash")
         
         var teamRevealed = await instance.teamRevealed(0, { from: player1 })
         assert.notEqual(teamRevealed, true, "team should not have been revealed")
@@ -209,6 +209,11 @@ contract('CryptoFPL', async (accounts) => {
       it('should update user scores after the gameweek has ended', async () => {
 
       })
+
+      // it('should let the league manager update the gameweek', async () => {
+      //   await instance.updateGameweek()
+      //   assert.equal(instance.gameweek, 1) 
+      // })
 
     })
 

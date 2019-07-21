@@ -68,6 +68,7 @@ contract CryptoFPLCards is Ownable, ERC1155MintBurn, ERC1155Metadata, CryptoFPL1
     require(msg.value >= CARDPACK_PRICE, "Insufficient funds to mint team");
     require (ids.length != CARDPACK_SIZE, "Invalid number of cards in pack");
     require (ids.length == playerPositions.length, "Player ids and positions array size mismatch");
+    require (ids.length == amounts.length, "Player ids and amounts to mint array size mismatch");
     // require (msg.sender == _owner);
     _addTokensTo(_owner, ids);
     _batchMint(_owner, ids, amounts);
