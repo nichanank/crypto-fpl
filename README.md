@@ -18,6 +18,8 @@
 - ReactJS, NodeJS, mySQL powers the client and backend
 
 ## 👩🏻‍💻 Development
+- Clone the repo using `git clone https://github.com/nichanank/crypto-fpl.git`
+- `cd crypto-fpl` and clone the client repo using `git clone https://github.com/nichanank/cryptofpl-client.git`
 - Have a local blockchain running on port 7545 (e.g. using Ganache)
 - Deploy contracts with `truffle migrate --reset`
 - To start the server, navigate to the `cryptofpl-server` folder with `cd cryptofpl-server` and `npm run server`
