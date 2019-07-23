@@ -14,7 +14,7 @@ router.get('/all', (req, res) => {
 
 //returns footballer with corresponding id
 router.get('/:id', (req, res) => {
-  db.select().from('footballers').where({id: req.params.id}).limit(1).then((data) => {
+  db.select().from('footballers').where({player_id: req.params.id}).limit(1).then((data) => {
     res.send(data)
   }).catch((err) => {
     console.log(err)

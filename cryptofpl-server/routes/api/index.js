@@ -1,7 +1,10 @@
 const express = require('express')
 const router = express.Router()
-const footballersRoute = require('./footballers')
-const gameweeksRoute = require('./gameweeks')
+// const footballersRoute = require('./footballers')
+// const gameweeksRoute = require('./gameweeks')
+
+const footballersRoute = require('./footballersDemoAPI')
+const gameweeksRoute = require('./gameweeksDemoAPI')
 
 /* GET home page. */
 router.get('/', function(req, res, next) {

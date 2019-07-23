@@ -4,7 +4,7 @@ const knex = require('knex')({
     host     : 'localhost',
     user     : 'root',
     password : process.env.MYSQL_PW,
-    database : 'footballers_db'
+    database : 'footballers_db',
   }
 })
 
