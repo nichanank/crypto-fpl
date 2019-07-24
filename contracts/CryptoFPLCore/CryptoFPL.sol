@@ -55,6 +55,7 @@ contract CryptoFPL is usingOraclize {
 
     mapping(uint => Game) games;
     mapping(uint => uint) balances;
+    mapping(address => uint) refunds; // Keeps track of refunds for players to withdraw from in case they deposited too much.
     mapping(address => uint) activeGameIndex;
     mapping(address => mapping(uint => uint)) activeGames; // Keeps track of each player's active games by mapping activeGameIndex to gameId
     mapping(uint => uint) public recentlyCreatedGames; // Keeps track of up to 10 latest gamesIds created
@@ -121,6 +122,12 @@ contract CryptoFPL is usingOraclize {
         paused = !paused;
     }
 
+    function incrementGameweek(uint _deadline) public isLeagueManager() {
+        gameweek += 1;
+        deadline = _deadline;
+        emit LogNewGameweekBegin(gameweek, deadline);
+    }
+
     // function updateGameweek() public isLeagueManager() {
     //     // oraclize_query("URL", "http://slimy-chipmunk-20.localtunnel.me/api/gameweeks/1/deadline");
     //     oraclize_query("URL", "https://api.kraken.com/0/public/Ticker?pair=ETHXBT");
@@ -173,19 +180,27 @@ contract CryptoFPL is usingOraclize {
         activeGames[msg.sender][activeGameIndex[msg.sender]] = gameId;
         activeGameIndex[msg.sender] += 1;
         uint change = msg.value - wager;
-        msg.sender.transfer(change);
+        refunds[msg.sender] += change;
         emit LogGameCreation(msg.sender, wager, gameId);
         return gameId;
     }
 
+    //Lets the user withdraw the refund in case of overpayment or game cancellation
+    function withdrawRefund() external {
+        uint refund = refunds[msg.sender];
+        refunds[msg.sender] = 0;
+        msg.sender.transfer(refund);
+    }
+
     //Player2 joins game and deposits wager
-    function joinGame(uint gameId) public payable gameIsOpen(gameId) enoughFunds(gameId) checkValue(gameId) validPlayer2(gameId) validActiveGameCount() stopInEmergency() {
+    function joinGame(uint gameId) public payable gameIsOpen(gameId) enoughFunds(gameId) checkValue(gameId) validPlayer2(gameId) validActiveGameCount() stopInEmergency() returns(uint) {
         games[gameId].player2 = msg.sender;
         games[gameId].isOpen = false;
         balances[gameId] = games[gameId].wager * 2;
         activeGames[msg.sender][activeGameIndex[msg.sender]] = gameId;
         activeGameIndex[msg.sender] += 1;
         emit LogGameBegin(msg.sender, gameId, balances[gameId]);
+        return gameId;
     }
 
     //Lets users view 10 most recently created games
@@ -262,7 +277,7 @@ contract CryptoFPL is usingOraclize {
             gkCommits[msg.sender][gameId].revealed == false &&
             defCommits[msg.sender][gameId].revealed == false &&
             midCommits[msg.sender][gameId].revealed == false &&
-            fwdCommits[msg.sender][gameId].revealed == false, "CommitReveal::revealAnswer: Already revealed"
+            fwdCommits[msg.sender][gameId].revealed == false, "Team has already been revealed"
             );
         
         //require that they can produce the committed hash
@@ -270,7 +285,7 @@ contract CryptoFPL is usingOraclize {
             getSaltedHash(gkReveal, salt) == gkCommits[msg.sender][gameId].commit &&
             getSaltedHash(defReveal, salt) == defCommits[msg.sender][gameId].commit &&
             getSaltedHash(midReveal, salt) == midCommits[msg.sender][gameId].commit &&
-            getSaltedHash(fwdReveal, salt) == fwdCommits[msg.sender][gameId].commit, "CommitReveal::revealAnswer: Revealed hash does not match commit"
+            getSaltedHash(fwdReveal, salt) == fwdCommits[msg.sender][gameId].commit, "Revealed hash does not match commit"
             );
 
         gkCommits[msg.sender][gameId].revealed = true;
@@ -335,7 +350,7 @@ contract CryptoFPL is usingOraclize {
     }
   
     // Winner can withdraw prize money at the end of the game
-    function withdrawPayout(uint gameId) public isWinner(gameId) {
+    function withdrawPayout(uint gameId) external isWinner(gameId) {
         uint winnings = balances[gameId];
         balances[gameId] = 0;
         games[gameId].isFinished = true;

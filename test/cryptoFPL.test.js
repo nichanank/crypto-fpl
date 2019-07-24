@@ -76,10 +76,11 @@ contract('CryptoFPL', async (accounts) => {
       it('should give refunds if second user deposits more than the stated wager', async () => {
         await instance.createGame(100, {from: player1, value: 100})
         const beforeBalance = await web3.eth.getBalance(player2)
-        await instance.joinGame(0, {from: player2, value: 100})
+        await instance.joinGame(0, {from: player2, value: 200}) //Overpayment
+        await instance.withdrawRefund({from: player2})
         const afterBalance = await web3.eth.getBalance(player2)
 
-        assert.equal((Number(afterBalance.slice(-4)) + 100).toString(), beforeBalance.slice(-4), "overpayment should be refunded")
+        assert.equal((Number(afterBalance.slice(-4))), beforeBalance.slice(-4) - 100, "overpayment should be refunded")
       })
 
       it('should store the correct available payout for each game', async () => {

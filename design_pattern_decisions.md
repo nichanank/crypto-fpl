@@ -1,4 +1,4 @@
-## Design Pattern Decisions
+## 💡 Design Pattern Decisions
 A summary of design pattern decisions and smart contract best practices taken into account for the CryptoFPL contracts.
 
 ### Fail early and Fail Loud
