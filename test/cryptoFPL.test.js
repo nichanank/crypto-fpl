@@ -15,6 +15,10 @@ contract('CryptoFPL', async (accounts) => {
   const player2 = accounts[2]
   const player3 = accounts[3]
   const entryFee = 20
+  const ids = [1, 2, 3, 4] // Dummy CryptoFPLCards tokenIDs to mint
+  const positions = [1, 2, 3, 4] // Positions for minted CryptoFPLCards
+  const amounts = [1, 1, 1, 1] // Amounts of CryptoFPLCards minted each time
+  const salt = web3.utils.sha3("1") // Example salt to add to the player commits
   let instance
   
   beforeEach( async () => {
@@ -71,11 +75,11 @@ contract('CryptoFPL', async (accounts) => {
 
       it('should give refunds if second user deposits more than the stated wager', async () => {
         await instance.createGame(100, {from: player1, value: 100})
-        const beforeAmount = await web3.eth.getBalance(player2)
+        const beforeBalance = await web3.eth.getBalance(player2)
         await instance.joinGame(0, {from: player2, value: 100})
-        const afterAmount = await web3.eth.getBalance(player2)
+        const afterBalance = await web3.eth.getBalance(player2)
 
-        assert.equal((Number(afterAmount.slice(-4)) + 100).toString(), beforeAmount.slice(-4), "overpayment should be refunded")
+        assert.equal((Number(afterBalance.slice(-4)) + 100).toString(), beforeBalance.slice(-4), "overpayment should be refunded")
       })
 
       it('should store the correct available payout for each game', async () => {
@@ -132,19 +136,15 @@ contract('CryptoFPL', async (accounts) => {
       })
       
       it('should let users commit their selected team', async () => {
-        let ids = [1, 2, 3, 4]
-        let positions = [1, 2, 3, 4]
-        let amounts = [1, 1, 1, 1]
         let cardContractInstance = await CryptoFPLCards.new(1819)
-        let salt = web3.utils.sha3("1")
         await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: 100})
         await instance.createGame(100, {from: player1, value: 100})
 
         let teamHashes = {}
-        teamHashes['gk'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[0]), salt)
-        teamHashes['def'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[1]), salt)
-        teamHashes['mid'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[2]), salt)
-        teamHashes['fwd'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[3]), salt)
+        teamHashes['gk'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[0]))), salt)
+        teamHashes['def'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[0]))), salt)
+        teamHashes['mid'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[0]))), salt)
+        teamHashes['fwd'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[0]))), salt)
 
         await instance.commitTeam(teamHashes['gk'], teamHashes['def'], teamHashes['mid'], teamHashes['fwd'], 0, { from: player1 })
         let teamCommit = await instance.getTeamCommitForGame(0, player1 )
@@ -157,48 +157,40 @@ contract('CryptoFPL', async (accounts) => {
       })
 
       it('should let users reveal their selected team if the submitted hashes are valid', async () => {
-        let ids = [1, 2, 3, 4]
-        let positions = [1, 2, 3, 4]
-        let amounts = [1, 1, 1, 1]
-        let salt = web3.utils.sha3("1")
         let cardContractInstance = await CryptoFPLCards.new(1819)
         await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: 100})
         await instance.createGame(100, {from: player1, value: 100})
 
         let teamHashes = {}
-        teamHashes['gk'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[0]), salt)
-        teamHashes['def'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[1]), salt)
-        teamHashes['mid'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[2]), salt)
-        teamHashes['fwd'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[3]), salt)
+        teamHashes['gk'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[0]))), salt)
+        teamHashes['def'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[1]))), salt)
+        teamHashes['mid'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[2]))), salt)
+        teamHashes['fwd'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[3]))), salt)
 
         await instance.commitTeam(teamHashes['gk'], teamHashes['def'], teamHashes['mid'], teamHashes['fwd'], 0, { from: player1 })
-        await instance.revealTeam(web3.utils.utf8ToHex(ids[0]), web3.utils.utf8ToHex(ids[1]), web3.utils.utf8ToHex(ids[2]), web3.utils.utf8ToHex(ids[03]), 0, salt, 15, { from: player1 })
+        await instance.revealTeam(web3.utils.sha3(web3.utils.numberToHex(ids[0])), web3.utils.sha3(web3.utils.numberToHex(ids[1])), web3.utils.sha3(web3.utils.numberToHex(ids[2])), web3.utils.sha3(web3.utils.numberToHex(ids[3])), 0, salt, 15, { from: player1 })
 
         var teamRevealed = await instance.teamRevealed(0, player1)
         assert.equal(teamRevealed, true, "team has not been revealed")
       })
       
       it('should not let player reveal their team if revealHash is not valid', async () => {
-        let ids = [1, 2, 3, 4]
-        let positions = [1, 2, 3, 4]
-        let amounts = [1, 1, 1, 1]
-        let salt = web3.utils.sha3("1")
         let cardContractInstance = await CryptoFPLCards.new(1819)
         await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: 100})
         await instance.createGame(100, {from: player1, value: 100})
 
         let teamHashes = {}
-        teamHashes['gk'] = await instance.getSaltedHash(web3.utils.numberToHex(ids[0]), salt)
-        teamHashes['def'] = await instance.getSaltedHash(web3.utils.numberToHex(ids[1]), salt)
-        teamHashes['mid'] = await instance.getSaltedHash(web3.utils.numberToHex(ids[2]), salt)
-        teamHashes['fwd'] = await instance.getSaltedHash(web3.utils.numberToHex(ids[3]), salt)
+        teamHashes['gk'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[0]))), salt)
+        teamHashes['def'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[1]))), salt)
+        teamHashes['mid'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[2]))), salt)
+        teamHashes['fwd'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[3]))), salt)
 
         await instance.commitTeam(teamHashes['gk'], teamHashes['def'], teamHashes['mid'], teamHashes['fwd'], 0, { from: player1 })
 
-        let incorrectGkReveal = web3.utils.sha3("" + ids[2])
-        let correctDefReveal = web3.utils.sha3("" + ids[1])
-        let correctMidReveal = web3.utils.sha3("" + ids[2])
-        let correctFwdReveal = web3.utils.sha3("" + ids[3])
+        let incorrectGkReveal = web3.utils.sha3(web3.utils.numberToHex(ids[2]))
+        let correctDefReveal = web3.utils.sha3(web3.utils.numberToHex(ids[1]))
+        let correctMidReveal = web3.utils.sha3(web3.utils.numberToHex(ids[2]))
+        let correctFwdReveal = web3.utils.sha3(web3.utils.numberToHex(ids[3]))
         await catchRevert(instance.revealTeam(incorrectGkReveal, correctDefReveal, correctMidReveal, correctFwdReveal, 0, salt, 15, { from: player1 }), "should have reverted due to invalid revealHash")
         
         var teamRevealed = await instance.teamRevealed(0, player1)
@@ -207,10 +199,6 @@ contract('CryptoFPL', async (accounts) => {
       })
 
       it('should record the player score upon team reveal', async () => {
-        let ids = [1, 2, 3, 4]
-        let positions = [1, 2, 3, 4]
-        let amounts = [1, 1, 1, 1]
-        let salt = web3.utils.sha3("1")
         let cardContractInstance = await CryptoFPLCards.new(1819)
         
         await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: 100})
@@ -220,17 +208,24 @@ contract('CryptoFPL', async (accounts) => {
         await instance.joinGame(0, {from: player2, value: 100})
 
         let teamHashes = {}
-        teamHashes['gk'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[0]), salt)
-        teamHashes['def'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[1]), salt)
-        teamHashes['mid'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[2]), salt)
-        teamHashes['fwd'] = await instance.getSaltedHash(web3.utils.utf8ToHex(ids[3]), salt)
+        teamHashes['gk'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[0]))), salt)
+        teamHashes['def'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[1]))), salt)
+        teamHashes['mid'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[2]))), salt)
+        teamHashes['fwd'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[3]))), salt)
 
         await instance.commitTeam(teamHashes['gk'], teamHashes['def'], teamHashes['mid'], teamHashes['fwd'], 0, { from: player1 })
         await instance.commitTeam(teamHashes['gk'], teamHashes['def'], teamHashes['mid'], teamHashes['fwd'], 0, { from: player2 })
-        
+
         //Reveal team with dummy scores
-        await instance.revealTeam(web3.utils.utf8ToHex(ids[0]), web3.utils.utf8ToHex(ids[1]), web3.utils.utf8ToHex(ids[2]), web3.utils.utf8ToHex(ids[03]), 0, salt, 20, { from: player1 })
-        await instance.revealTeam(web3.utils.utf8ToHex(ids[0]), web3.utils.utf8ToHex(ids[1]), web3.utils.utf8ToHex(ids[2]), web3.utils.utf8ToHex(ids[03]), 0, salt, 15, { from: player2 })
+        let correctGkReveal = web3.utils.sha3(web3.utils.numberToHex(ids[0]))
+        let correctDefReveal = web3.utils.sha3(web3.utils.numberToHex(ids[1]))
+        let correctMidReveal = web3.utils.sha3(web3.utils.numberToHex(ids[2]))
+        let correctFwdReveal = web3.utils.sha3(web3.utils.numberToHex(ids[3]))
+        let player1Score = 20
+        let player2Score = 15
+        
+        await instance.revealTeam(correctGkReveal, correctDefReveal, correctMidReveal, correctFwdReveal, 0, salt, player1Score, { from: player1 })
+        await instance.revealTeam(correctGkReveal, correctDefReveal, correctMidReveal, correctFwdReveal, 0, salt, player2Score, { from: player2 })
         let player1Revealed = await instance.teamRevealed(0, player1)
         let player2Revealed = await instance.teamRevealed(0, player2)
         assert.equal(player1Revealed, true, "Player 1's team should have been marked as revealed")
@@ -250,11 +245,71 @@ contract('CryptoFPL', async (accounts) => {
     describe("PrizeWinnings", async () => {
       
       it('should allow winner to withdraw the payout', async () => {
+        
+        let cardContractInstance = await CryptoFPLCards.new(1819)
+        
+        await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: 100})
+        await cardContractInstance.mintTeam(player2, ids, positions, amounts, {value: 100})
+        
+        await instance.createGame(100, {from: player1, value: 100})
+        await instance.joinGame(0, {from: player2, value: 100})
 
+        let teamHashes = {}
+        teamHashes['gk'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[0]))), salt)
+        teamHashes['def'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[1]))), salt)
+        teamHashes['mid'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[2]))), salt)
+        teamHashes['fwd'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[3]))), salt)
+
+        await instance.commitTeam(teamHashes['gk'], teamHashes['def'], teamHashes['mid'], teamHashes['fwd'], 0, { from: player1 })
+        await instance.commitTeam(teamHashes['gk'], teamHashes['def'], teamHashes['mid'], teamHashes['fwd'], 0, { from: player2 })
+        
+        //Reveal team with dummy scores
+        let correctGkReveal = web3.utils.sha3(web3.utils.numberToHex(ids[0]))
+        let correctDefReveal = web3.utils.sha3(web3.utils.numberToHex(ids[1]))
+        let correctMidReveal = web3.utils.sha3(web3.utils.numberToHex(ids[2]))
+        let correctFwdReveal = web3.utils.sha3(web3.utils.numberToHex(ids[3]))
+        let player1Score = 20
+        let player2Score = 15
+        
+        await instance.revealTeam(correctGkReveal, correctDefReveal, correctMidReveal, correctFwdReveal, 0, salt, player1Score, { from: player1 })
+        await instance.revealTeam(correctGkReveal, correctDefReveal, correctMidReveal, correctFwdReveal, 0, salt, player2Score, { from: player2 })
+        
+        let beforeBalance = await web3.eth.getBalance(player1)
+        await instance.withdrawPayout(0, { from: player1 })
+        let afterBalance = await web3.eth.getBalance(player1)
+        assert.equal(Number(afterBalance.slice(-4) - beforeBalance.slice(-4)), 200, "Player1 should have received the money")
       })
 
       it('should not allow payout withdrawal if player has not won', async () => {
+        let cardContractInstance = await CryptoFPLCards.new(1819)
+        
+        await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: 100})
+        await cardContractInstance.mintTeam(player2, ids, positions, amounts, {value: 100})
+        
+        await instance.createGame(100, {from: player1, value: 100})
+        await instance.joinGame(0, {from: player2, value: 100})
 
+        let teamHashes = {}
+        teamHashes['gk'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[0]))), salt)
+        teamHashes['def'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[1]))), salt)
+        teamHashes['mid'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[2]))), salt)
+        teamHashes['fwd'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[3]))), salt)
+
+        await instance.commitTeam(teamHashes['gk'], teamHashes['def'], teamHashes['mid'], teamHashes['fwd'], 0, { from: player1 })
+        await instance.commitTeam(teamHashes['gk'], teamHashes['def'], teamHashes['mid'], teamHashes['fwd'], 0, { from: player2 })
+        
+        //Reveal team with dummy scores
+        let correctGkReveal = web3.utils.sha3(web3.utils.numberToHex(ids[0]))
+        let correctDefReveal = web3.utils.sha3(web3.utils.numberToHex(ids[1]))
+        let correctMidReveal = web3.utils.sha3(web3.utils.numberToHex(ids[2]))
+        let correctFwdReveal = web3.utils.sha3(web3.utils.numberToHex(ids[3]))
+        let player1Score = 20
+        let player2Score = 15
+        
+        await instance.revealTeam(correctGkReveal, correctDefReveal, correctMidReveal, correctFwdReveal, 0, salt, player1Score, { from: player1 })
+        await instance.revealTeam(correctGkReveal, correctDefReveal, correctMidReveal, correctFwdReveal, 0, salt, player2Score, { from: player2 })
+        
+        await catchRevert(instance.withdrawPayout(0, { from: player2 }), "Player 2 lost and should not be able to withdraw money from the game pool")
       })
 
     })
