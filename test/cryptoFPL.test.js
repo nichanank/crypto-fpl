@@ -236,6 +236,32 @@ contract('CryptoFPL', async (accounts) => {
         assert.equal(winner, player1, "Player1 should be the returned winner")
       })
 
+      it('should return the correct final score for a player once they have revealed their team', async () => {
+        let cardContractInstance = await CryptoFPLCards.new(1819)
+        await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: 100})
+        await instance.createGame(100, {from: player1, value: 100})
+
+        let teamHashes = {}
+        teamHashes['gk'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[0]))), salt)
+        teamHashes['def'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[1]))), salt)
+        teamHashes['mid'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[2]))), salt)
+        teamHashes['fwd'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[3]))), salt)
+
+        await instance.commitTeam(teamHashes['gk'], teamHashes['def'], teamHashes['mid'], teamHashes['fwd'], 0, { from: player1 })
+        
+        //Reveal team with dummy scores
+        let correctGkReveal = web3.utils.sha3(web3.utils.numberToHex(ids[0]))
+        let correctDefReveal = web3.utils.sha3(web3.utils.numberToHex(ids[1]))
+        let correctMidReveal = web3.utils.sha3(web3.utils.numberToHex(ids[2]))
+        let correctFwdReveal = web3.utils.sha3(web3.utils.numberToHex(ids[3]))
+        let player1Score = 20
+        
+        await instance.revealTeam(correctGkReveal, correctDefReveal, correctMidReveal, correctFwdReveal, 0, salt, player1Score, { from: player1 })
+        let player1Revealed = await instance.teamRevealed(0, player1)        
+        let score = await instance.viewPlayerScore(0, player1)
+        assert.equal(score, player1Score, "Player1 should be the returned winner")
+      })
+
       // it('should let the league manager update the gameweek', async () => {
       //   await instance.updateGameweek()
       //   assert.equal(instance.gameweek, 1) 

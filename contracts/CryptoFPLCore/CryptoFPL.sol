@@ -102,7 +102,7 @@ contract CryptoFPL is usingOraclize {
     
 
     //Modifiers
-    modifier isPlayer(uint gameId) { require(msg.sender == games[gameId].player1 || msg.sender == games[gameId].player2, "Invalid player address"); _;}
+    modifier isPlayer(uint gameId, address player) { require(player == games[gameId].player1 || player == games[gameId].player2, "Invalid player address"); _;}
     modifier validPlayer2(uint gameId) { require(msg.sender != games[gameId].player1, "Player can't join their own game"); _;}
     modifier gameIsOpen(uint gameId) { require(games[gameId].isOpen, "Game is closed"); _;}
     modifier enoughFunds(uint gameId) { require(msg.value >= games[gameId].wager, "Insufficient funds sent as wager"); _;}
@@ -127,7 +127,7 @@ contract CryptoFPL is usingOraclize {
          _;
     }
 
-    //Refund player 2 if they send in an amount exceeding the stated wager
+    /// Refund player 2 if they send in an amount exceeding the stated wager
     modifier checkValue(uint gameId) {
         _;
         uint _wager = games[gameId].wager;
@@ -135,7 +135,7 @@ contract CryptoFPL is usingOraclize {
         games[gameId].player2.transfer(amountToRefund);
     }
 
-    //Verify winner for payout withdrawal
+    /// Verify winner for payout withdrawal
     modifier isWinner(uint gameId) {
         require((msg.sender == games[gameId].player1 && games[gameId].player1Wins) ||
              (msg.sender == games[gameId].player2 && games[gameId].player2Wins));
@@ -287,7 +287,7 @@ contract CryptoFPL is usingOraclize {
         bytes32 fwdHash, 
         uint gameId) 
         public 
-        isPlayer(gameId) 
+        isPlayer(gameId, msg.sender) 
         stopInEmergency() {
 
         gkCommits[msg.sender][gameId] = Commit({
@@ -348,7 +348,7 @@ contract CryptoFPL is usingOraclize {
         bytes memory salt, 
         uint totalScore) 
         public 
-        isPlayer(gameId) 
+        isPlayer(gameId, msg.sender) 
         stopInEmergency() {        
         
         /// Make sure it hasn't been revealed yet and set it to revealed
@@ -409,11 +409,24 @@ contract CryptoFPL is usingOraclize {
     /// @param gameId for the game in question
     /// @param player address whose team you want to check the reveal status
     /// @return whether or not the player has revealed their team
-    function teamRevealed(uint gameId, address player) public view returns(bool) {
+    function teamRevealed(uint gameId, address player) public view isPlayer(gameId, player) returns(bool) {
         return (gkCommits[player][gameId].revealed && 
                 defCommits[player][gameId].revealed && 
                 midCommits[player][gameId].revealed && 
                 fwdCommits[player][gameId].revealed);
+    }
+
+    /// Retrieves final score for a given player for a game
+    /// @param gameId for the game in question
+    /// @param player address whose team you want to check the score
+    /// @return player score for game
+    function viewPlayerScore(uint gameId, address player) public view isPlayer(gameId, player) returns(uint) {
+        require(gkCommits[player][gameId].revealed == true);
+        if (games[gameId].player1 == player) {
+            return games[gameId].player1Score;
+        } else {
+            return games[gameId].player2Score;
+        }
     }
 
     /// Sets the winner for a given game once both teams have been revealed
