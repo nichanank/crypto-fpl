@@ -3,7 +3,7 @@ pragma solidity ^0.5.0;
 import "../OraclizeAPI.sol";
 
     /// @author Nichanan Kesonpat
-    /// @title A PvP card game based on Fantasy Premier League.
+    /// @title A lightweight PvP card game based on Fantasy Premier League.
 
     /*
         THE GAME:
@@ -14,6 +14,7 @@ import "../OraclizeAPI.sol";
         RULES:
         - Each player deposits fees to enter the game
         - Each player selects footballer cards from their CryptoFPL collection
+        - A player can only be involved in 3 active games at one time
         - A team selection must consist of: 1 GK, 1 DF, 1 MF, 1 FWD
     */
 
@@ -55,6 +56,7 @@ contract CryptoFPL is usingOraclize {
 
     mapping(uint => Game) games;
     mapping(uint => uint) balances;
+    
     mapping(address => uint) refunds; // Keeps track of refunds for players to withdraw from in case they deposited too much.
     mapping(address => uint) activeGameIndex;
     mapping(address => mapping(uint => uint)) activeGames; // Keeps track of each player's active games by mapping activeGameIndex to gameId
@@ -71,11 +73,33 @@ contract CryptoFPL is usingOraclize {
     event LogNewGameweekBegin(uint gameweek, uint deadline);
     event LogGameCreation(address player1, uint wager, uint gameId);
     event LogGameBegin(address player2, uint gameId, uint totalPayout);
-    event LogPlayer1TeamCommit(address player1, uint gameId, bytes32 gkHash, bytes32 defHash, bytes32 midHash, bytes32 fwdHash);
-    event LogPlayer2TeamCommit(address player2, uint gameId, bytes32 gkHash, bytes32 defHash, bytes32 midHash, bytes32 fwdHash);
-    event LogTeamReveal(address sender, bytes gkReveal, bytes defReveal, bytes midReveal, bytes fwdReveal, bytes salt);
     event LogGameEnd(address winner, uint winningScore, uint losingScore);
     event LogPayoutSent(address winner, uint balance);
+    event LogPlayer1TeamCommit(
+        address player1, 
+        uint gameId, 
+        bytes32 gkHash, 
+        bytes32 defHash, 
+        bytes32 midHash, 
+        bytes32 fwdHash
+    );
+    event LogPlayer2TeamCommit(
+        address player2, 
+        uint gameId, 
+        bytes32 gkHash, 
+        bytes32 defHash, 
+        bytes32 midHash, 
+        bytes32 fwdHash
+    );
+    event LogTeamReveal(
+        address sender, 
+        bytes gkReveal, 
+        bytes defReveal, 
+        bytes midReveal, 
+        bytes fwdReveal, 
+        bytes salt
+    );
+    
 
     //Modifiers
     modifier isPlayer(uint gameId) { require(msg.sender == games[gameId].player1 || msg.sender == games[gameId].player2, "Invalid player address"); _;}
@@ -83,14 +107,25 @@ contract CryptoFPL is usingOraclize {
     modifier gameIsOpen(uint gameId) { require(games[gameId].isOpen, "Game is closed"); _;}
     modifier enoughFunds(uint gameId) { require(msg.value >= games[gameId].wager, "Insufficient funds sent as wager"); _;}
     modifier isLeagueManager() { require(msg.sender == leagueManager, "Only the league manager can perform this action"); _; }
-    modifier bothTeamsSubmitted(uint gameId) { require(games[gameId].player1TeamSubmitted == true && games[gameId].player2TeamSubmitted == true, "Both players are required to have submitted a team"); _; }
-    modifier bothTeamsRevealed(uint gameId) { require(games[gameId].player1TeamRevealed == true && games[gameId].player2TeamRevealed == true, "Both players are required to have revealed their teams"); _; }
-    modifier validActiveGameCount() { 
-        require(msg.sender == leagueManager || activeGameIndex[msg.sender] < 3, "Player already has 3 active games");
-         _;
-    }
     modifier stopInEmergency() { require(!paused, "Cannot execute this function when the contract is paused"); _; }
     modifier onlyInEmergency() { require(paused, "This function can only be executed if the contract has been paused"); _; }
+    
+    modifier bothTeamsSubmitted(uint gameId) { 
+        require(games[gameId].player1TeamSubmitted == true && games[gameId].player2TeamSubmitted == true, 
+        "Both players are required to have submitted a team"); 
+        _; 
+    }
+    modifier bothTeamsRevealed(uint gameId) { 
+        require(games[gameId].player1TeamRevealed == true && games[gameId].player2TeamRevealed == true, 
+        "Both players are required to have revealed their teams"); 
+        _; 
+    }
+   
+    modifier validActiveGameCount() { 
+        require(msg.sender == leagueManager || activeGameIndex[msg.sender] < 3, 
+        "Player already has 3 active games");
+         _;
+    }
 
     //Refund player 2 if they send in an amount exceeding the stated wager
     modifier checkValue(uint gameId) {
@@ -146,12 +181,16 @@ contract CryptoFPL is usingOraclize {
         GAME ENTRY: Players can create a game by depositing a wager and wait for another player to join the game.
      */
     
-    //View game details
+    /// Return information for a given game
+    /// @param gameId of the game 
+    /// @return player information, wager, and whether or not the game is open
     function getGameDetails(uint gameId) public view returns(address player1, address player2, uint wager, bool isOpen) {
         return (games[gameId].player1, games[gameId].player2, games[gameId].wager, games[gameId].isOpen);
     }
     
-    //Player1 creates game and sets wager
+    /// Allows a player to create their game and stores the new game in the 'games' mapping
+    /// @param wager for the game
+    /// @return gameId of the newly created game in
     function createGame(uint wager) public payable validActiveGameCount() stopInEmergency() returns(uint)  {
         require(msg.value >= wager);
         uint gameId = idGenerator;
@@ -185,14 +224,16 @@ contract CryptoFPL is usingOraclize {
         return gameId;
     }
 
-    //Lets the user withdraw the refund in case of overpayment or game cancellation
+    /// Lets the user withdraw the refund in case of overpayment or game cancellation
     function withdrawRefund() external {
         uint refund = refunds[msg.sender];
         refunds[msg.sender] = 0;
         msg.sender.transfer(refund);
     }
 
-    //Player2 joins game and deposits wager
+    /// Allows a second player to join an open game
+    /// @param gameId of the game that the player wants to join
+    /// @return the gameId
     function joinGame(uint gameId) public payable gameIsOpen(gameId) enoughFunds(gameId) checkValue(gameId) validPlayer2(gameId) validActiveGameCount() stopInEmergency() returns(uint) {
         games[gameId].player2 = msg.sender;
         games[gameId].isOpen = false;
@@ -203,7 +244,9 @@ contract CryptoFPL is usingOraclize {
         return gameId;
     }
 
-    //Lets users view 10 most recently created games
+    /// Returns 10 latest games created
+    /// @dev retrieves the recent games from the storage array 'recentlyCreatedGames'
+    /// @return gameIds of the 10 most recently created games
     function viewRecentlyCreatedGames() public view returns (uint[10] memory latestGames) {
         uint[10] memory recentGames;
         for (uint8 i = 0; i < 10; i++) {
@@ -212,12 +255,13 @@ contract CryptoFPL is usingOraclize {
         return recentGames;
     }
 
-    //Return the total number of games that have ever been created
+    /// @return the total number of games that have ever been created
     function totalGames() public view returns (uint) {
         return idGenerator;
     }
 
-    //Returns an array of gamesIds that a player is currently active in.
+    /// Retrieves gamesIds that a player is currently active in
+    /// @return an array of gameIds that the player is active in
     function viewActiveGames() public view returns (uint[3] memory gameIds) {
         uint[3] memory result;
         for(uint i = 0; i < activeGameIndex[msg.sender]; i++) {
@@ -228,10 +272,20 @@ contract CryptoFPL is usingOraclize {
 
     /* 
         GAMEPLAY: Players submit a team consisting of 1 GK, 1 DEF, 1 MID, and 1 FWD. A hash of this selection is commited to the blockchain with a random salt. They can then reveal their team by providing their original team submission and salt.
-     */
+    */
 
-    //Commits a player to their team selection
-    function commitTeam(bytes32 gkHash, bytes32 defHash, bytes32 midHash, bytes32 fwdHash, uint gameId) public isPlayer(gameId) stopInEmergency() {
+    /// Stores hashes of a players' team selection for a given game
+    /// @param hashes of the player's team selection
+    /// @param gameId of the game that the player wants to commit their team to for
+    function commitTeam(
+        bytes32 gkHash, 
+        bytes32 defHash, 
+        bytes32 midHash, 
+        bytes32 fwdHash, 
+        uint gameId) 
+        public 
+        isPlayer(gameId) 
+        stopInEmergency() {
 
         gkCommits[msg.sender][gameId] = Commit({
             commit: gkHash,
@@ -266,13 +320,32 @@ contract CryptoFPL is usingOraclize {
         }
     }
 
+    /// Hashes a given piece of data with a given salt
+    /// @param data to be hashed
+    /// @param salt to hash the data with
+    /// @return saltedHash of the data and salt
     function getSaltedHash(bytes memory data, bytes memory salt) public view returns(bytes32) {
         return keccak256(abi.encodePacked(address(this), data, salt));
     }
     
-    function revealTeam(bytes memory gkReveal, bytes memory defReveal, bytes memory midReveal, bytes memory fwdReveal, uint gameId, bytes memory salt, uint totalScore) public isPlayer(gameId) stopInEmergency() {        
+    /// Check if reveal hashes match the commit hash
+    /// @param revealHashes of the team selection
+    /// @param gameId of the active game
+    /// @param salt that the original commits have been hashed with
+    /// @param totalScore accumulated by the submitted team
+    function revealTeam(
+        bytes memory gkReveal, 
+        bytes memory defReveal, 
+        bytes memory midReveal, 
+        bytes memory fwdReveal, 
+        uint gameId, 
+        bytes memory salt, 
+        uint totalScore) 
+        public 
+        isPlayer(gameId) 
+        stopInEmergency() {        
         
-        //make sure it hasn't been revealed yet and set it to revealed
+        /// Make sure it hasn't been revealed yet and set it to revealed
         require(
             gkCommits[msg.sender][gameId].revealed == false &&
             defCommits[msg.sender][gameId].revealed == false &&
@@ -310,6 +383,10 @@ contract CryptoFPL is usingOraclize {
         emit LogTeamReveal(msg.sender, gkReveal, defReveal, midReveal, fwdReveal, salt);
     }
 
+    /// Returns a player's team commit for a given game
+    /// @param gameId for the game in question
+    /// @param address of the player whose team commit you want
+    /// @return a bytes32 array of the commit hashes
     function getTeamCommitForGame(uint gameId, address player) public view returns(bytes32[4] memory commits) {
         bytes32 gkCommit = gkCommits[player][gameId].commit;
         bytes32 defCommit = defCommits[player][gameId].commit;
@@ -322,7 +399,10 @@ contract CryptoFPL is usingOraclize {
         GAME END: Team scores are totaled for each player and the player with the highest total score for that gameweek wins, they can then withdraw their payout.
     */
 
-    // Checks if the player's team has been revealed for a given game
+    /// Checks if the player's team has been revealed for a given game
+    /// @param gameId for the game in question
+    /// @param address of the player whose team you want to check the reveal status
+    /// @return whether or not the player has revealed their team
     function teamRevealed(uint gameId, address player) public view returns(bool) {
         return (gkCommits[player][gameId].revealed && 
                 defCommits[player][gameId].revealed && 
@@ -330,6 +410,8 @@ contract CryptoFPL is usingOraclize {
                 fwdCommits[player][gameId].revealed);
     }
 
+    /// Sets the winner for a given game once both teams have been revealed
+    /// @param gameId for the active game
     function declareWinner(uint gameId) internal bothTeamsRevealed(gameId) {
         if (games[gameId].player1Score > games[gameId].player2Score) {
             games[gameId].player1Wins = true;
@@ -341,6 +423,9 @@ contract CryptoFPL is usingOraclize {
         }
     }
 
+    /// Retrives the winner for a given game
+    /// @param gameId for the game you want to see the winner of
+    /// @return address of the winner
     function viewWinner(uint gameId) public view bothTeamsRevealed(gameId) returns(address winner) {
         if (games[gameId].player1Wins) {
             return games[gameId].player1;
@@ -349,7 +434,8 @@ contract CryptoFPL is usingOraclize {
         }
     }
   
-    // Winner can withdraw prize money at the end of the game
+    /// Allows the game winner to withdraw their payout
+    /// @param gameId of the game the caller wants to withdraw payout for
     function withdrawPayout(uint gameId) external isWinner(gameId) {
         uint winnings = balances[gameId];
         balances[gameId] = 0;
@@ -364,8 +450,8 @@ contract CryptoFPL is usingOraclize {
 
 }
 
+
 interface CryptoFPLCards {
-    
     enum Position {
     Forward,
     Midfielder,
@@ -374,5 +460,4 @@ interface CryptoFPLCards {
   }
     function positionOf(uint tokenId) external returns(Position);
     function balanceOf(address addr, uint tokenId) external returns(uint);
-
 }
