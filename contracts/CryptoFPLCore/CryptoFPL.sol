@@ -275,7 +275,10 @@ contract CryptoFPL is usingOraclize {
     */
 
     /// Stores hashes of a players' team selection for a given game
-    /// @param hashes of the player's team selection
+    /// @param gkHash of the player's Goalkeeper selection
+    /// @param defHash of the player's Defender selection
+    /// @param midHash of the player's Midfield selection
+    /// @param fwdHash of the player's Forward selection
     /// @param gameId of the game that the player wants to commit their team to for
     function commitTeam(
         bytes32 gkHash, 
@@ -329,7 +332,10 @@ contract CryptoFPL is usingOraclize {
     }
     
     /// Check if reveal hashes match the commit hash
-    /// @param revealHashes of the team selection
+    /// @param gkReveal reveal hash of the player's Goalkeeper selection
+    /// @param defReveal reveal hash of the player's Defender selection
+    /// @param midReveal reveal hash of the player's Midfield selection
+    /// @param fwdReveal reveal hash of the player's Forward selection
     /// @param gameId of the active game
     /// @param salt that the original commits have been hashed with
     /// @param totalScore accumulated by the submitted team
@@ -385,7 +391,7 @@ contract CryptoFPL is usingOraclize {
 
     /// Returns a player's team commit for a given game
     /// @param gameId for the game in question
-    /// @param address of the player whose team commit you want
+    /// @param player address whose team commit you want
     /// @return a bytes32 array of the commit hashes
     function getTeamCommitForGame(uint gameId, address player) public view returns(bytes32[4] memory commits) {
         bytes32 gkCommit = gkCommits[player][gameId].commit;
@@ -401,7 +407,7 @@ contract CryptoFPL is usingOraclize {
 
     /// Checks if the player's team has been revealed for a given game
     /// @param gameId for the game in question
-    /// @param address of the player whose team you want to check the reveal status
+    /// @param player address whose team you want to check the reveal status
     /// @return whether or not the player has revealed their team
     function teamRevealed(uint gameId, address player) public view returns(bool) {
         return (gkCommits[player][gameId].revealed && 
