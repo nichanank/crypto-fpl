@@ -5,6 +5,7 @@ const router = express.Router()
 
 const footballersRoute = require('./footballersDemoAPI')
 const gameweeksRoute = require('./gameweeksDemoAPI')
+const scoresRoute = require('./scoresDemoAPI')
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
@@ -13,5 +14,6 @@ router.get('/', function(req, res, next) {
 
 router.use('/footballers', footballersRoute)
 router.use('/gameweeks', gameweeksRoute)
+router.use('/scores', scoresRoute)
 
 module.exports = router
