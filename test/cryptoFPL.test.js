@@ -8,6 +8,7 @@ const maxNumber = '1157920892373161954235709850086879078532699846656405640394575
 const timePeriodInSeconds = 3600
 const from = Math.floor(new Date() / 1000)
 const to = from + timePeriodInSeconds
+const cardPrice = 100000000000000000
 
 contract('CryptoFPL', async (accounts) => {
   const deployer = accounts[0]
@@ -34,16 +35,32 @@ contract('CryptoFPL', async (accounts) => {
 
   })
 
+  describe("Admin", async ()  => {
+
+    it('should allow the leagueAdmin to pause the contract', async () => {
+      await instance.toggleContractPause({from: deployer})
+      const paused = await instance.isPaused()
+      assert.equal(paused, true, "contract should be paused")
+    })
+
+    it('should not let players call certain functions if the contact is currently paused', async () => {
+      await instance.toggleContractPause({from: deployer})
+      await catchRevert(instance.createGame(100, {from: player1, value: 100}), "player should not be able to create a game when the contract is paused")
+    })
+
+  })
+
   describe("Functions", () => {
     
-    it('getGameInfo() should return correct game details', async () => {
+    it('viewGameDetails() should return correct game details', async () => {
       await instance.createGame(100, {from: player1, value: 100})
-      await instance.joinGame(0, {from: player2, value: 100})
-      const gameDetails = await instance.getGameDetails(0)
+      await instance.joinGame(0, {from: player2, value: cardPrice})
+      const gameDetails = await instance.viewGameDetails(0)
       assert.equal(gameDetails['0'], player1)
       assert.equal(gameDetails['1'], player2)
       assert.equal(gameDetails['2'].toString(), '100')
       assert.equal(gameDetails['3'], false)
+      assert.equal(gameDetails['4'], false)
     })
 
     describe("createGame()", async () => {
@@ -138,7 +155,7 @@ contract('CryptoFPL', async (accounts) => {
       
       it('should let users commit their selected team', async () => {
         let cardContractInstance = await CryptoFPLCards.new(1819)
-        await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: 100})
+        await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: cardPrice})
         await instance.createGame(100, {from: player1, value: 100})
 
         let teamHashes = {}
@@ -159,7 +176,7 @@ contract('CryptoFPL', async (accounts) => {
 
       it('should let users reveal their selected team if the submitted hashes are valid', async () => {
         let cardContractInstance = await CryptoFPLCards.new(1819)
-        await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: 100})
+        await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: cardPrice})
         await instance.createGame(100, {from: player1, value: 100})
 
         let teamHashes = {}
@@ -177,7 +194,7 @@ contract('CryptoFPL', async (accounts) => {
       
       it('should not let player reveal their team if revealHash is not valid', async () => {
         let cardContractInstance = await CryptoFPLCards.new(1819)
-        await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: 100})
+        await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: cardPrice})
         await instance.createGame(100, {from: player1, value: 100})
 
         let teamHashes = {}
@@ -202,8 +219,8 @@ contract('CryptoFPL', async (accounts) => {
       it('should record the player score upon team reveal', async () => {
         let cardContractInstance = await CryptoFPLCards.new(1819)
         
-        await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: 100})
-        await cardContractInstance.mintTeam(player2, ids, positions, amounts, {value: 100})
+        await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: cardPrice})
+        await cardContractInstance.mintTeam(player2, ids, positions, amounts, {value: cardPrice})
         
         await instance.createGame(100, {from: player1, value: 100})
         await instance.joinGame(0, {from: player2, value: 100})
@@ -238,7 +255,7 @@ contract('CryptoFPL', async (accounts) => {
 
       it('should return the correct final score for a player once they have revealed their team', async () => {
         let cardContractInstance = await CryptoFPLCards.new(1819)
-        await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: 100})
+        await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: cardPrice})
         await instance.createGame(100, {from: player1, value: 100})
 
         let teamHashes = {}
@@ -275,8 +292,8 @@ contract('CryptoFPL', async (accounts) => {
         
         let cardContractInstance = await CryptoFPLCards.new(1819)
         
-        await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: 100})
-        await cardContractInstance.mintTeam(player2, ids, positions, amounts, {value: 100})
+        await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: cardPrice})
+        await cardContractInstance.mintTeam(player2, ids, positions, amounts, {value: cardPrice})
         
         await instance.createGame(100, {from: player1, value: 100})
         await instance.joinGame(0, {from: player2, value: 100})
@@ -310,8 +327,8 @@ contract('CryptoFPL', async (accounts) => {
       it('should not allow payout withdrawal if player has not won', async () => {
         let cardContractInstance = await CryptoFPLCards.new(1819)
         
-        await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: 100})
-        await cardContractInstance.mintTeam(player2, ids, positions, amounts, {value: 100})
+        await cardContractInstance.mintTeam(player1, ids, positions, amounts, {value: cardPrice})
+        await cardContractInstance.mintTeam(player2, ids, positions, amounts, {value: cardPrice})
         
         await instance.createGame(100, {from: player1, value: 100})
         await instance.joinGame(0, {from: player2, value: 100})

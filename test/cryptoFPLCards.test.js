@@ -11,7 +11,8 @@ contract('CryptoFPL', async (accounts) => {
   const owner = accounts[0]
   const user1 = accounts[1]
   const user2 = accounts[2]
-  let catchRevert = require("./exceptionHelpers.js").catchRevert
+  const cardPrice = 100000000000000000
+  const catchRevert = require("./exceptionHelpers.js").catchRevert
   
   beforeEach('set up CryptoFPLCards contract for each test', async () => {
     instance = await CryptoFPLCards.deployed()
@@ -41,7 +42,7 @@ contract('CryptoFPL', async (accounts) => {
       let ids = [1, 2, 3, 4]
       let positions = [1, 2, 3, 4]
       let amounts = [1, 10, 15, 20]
-      await instance.mintTeam(user2, ids, positions, amounts, {value: 100})
+      await instance.mintTeam(user2, ids, positions, amounts, {value: cardPrice})
       ownerTokenBalance1 = await instance.balanceOf(user2, 1)
       ownerTokenBalance2 = await instance.balanceOf(user2, 2)
       ownerTokenBalance3 = await instance.balanceOf(user2, 3)
@@ -54,7 +55,7 @@ contract('CryptoFPL', async (accounts) => {
       let ids = [15, 21, 39, 94]
       let positions = [1, 2, 3, 4]
       let amounts = [1, 1, 1, 1]
-      await instance.mintTeam(user1, ids, positions, amounts, {value: 100})
+      await instance.mintTeam(user1, ids, positions, amounts, {value: cardPrice})
       footballer1Position = await instance.positions(15)
       footballer2Position = await instance.positions(21)
       footballer3Position = await instance.positions(94)
@@ -67,7 +68,7 @@ contract('CryptoFPL', async (accounts) => {
       let ids = [1, 2, 3, 4]
       let positions = [1, 2, 3, 4]
       let amounts = [1, 10, 15, 20]
-      await instance.mintTeam(owner, ids, positions, amounts, {value: 100})
+      await instance.mintTeam(owner, ids, positions, amounts, {value: cardPrice})
       let retVal = await instance.ownedTokens(owner)
       assert.equal(retVal[0].toNumber(), 1, 'owner should own token id 1')
       assert.equal(retVal[1].toNumber(), 2, 'owner should own token id 2')

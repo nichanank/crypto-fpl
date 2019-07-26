@@ -153,14 +153,18 @@ contract CryptoFPL is usingOraclize {
         ADMIN
      */
 
-    function toggleContractPause() public isLeagueManager() {
+    function toggleContractPause() external isLeagueManager() {
         paused = !paused;
     }
 
-    function incrementGameweek(uint _deadline) public isLeagueManager() {
+    function incrementGameweek(uint _deadline) external isLeagueManager() {
         gameweek += 1;
         deadline = _deadline;
         emit LogNewGameweekBegin(gameweek, deadline);
+    }
+
+    function isPaused() external view returns(bool) {
+        return paused;
     }
 
     // function updateGameweek() public isLeagueManager() {
@@ -183,9 +187,9 @@ contract CryptoFPL is usingOraclize {
     
     /// Return information for a given game
     /// @param gameId of the game 
-    /// @return player information, wager, and whether or not the game is open
-    function getGameDetails(uint gameId) public view returns(address player1, address player2, uint wager, bool isOpen) {
-        return (games[gameId].player1, games[gameId].player2, games[gameId].wager, games[gameId].isOpen);
+    /// @return player information, wager, whether or not the game is open, and whether or not the game is finished
+    function viewGameDetails(uint gameId) public view returns(address player1, address player2, uint wager, bool isOpen, bool isFinished) {
+        return (games[gameId].player1, games[gameId].player2, games[gameId].wager, games[gameId].isOpen, games[gameId].isFinished);
     }
     
     /// Allows a player to create their game and stores the new game in the 'games' mapping
