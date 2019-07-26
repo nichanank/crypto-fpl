@@ -27,7 +27,7 @@
 - Footballer data (names, position, team, gameweek scores) is based on the [Fantasy Premier League API](https://fantasy.premierleague.com/api/element-summary/1)
 - ReactJS, NodeJS, mySQL* powers the client and backend
 
-* For demonstration purposes, data has been seeded in `cryptofpl-server/data/.` as a regular object. In real life this will be stored in a server. Gameweek scores were randomly generated up to gameweek 3 to allow people to play with this demo app. In reality, players wouldn't be able to calculate their total scores until the Premier League gameweek has concoluded and footballer scores have been finalized.
+ℹ For demonstration purposes, data has been seeded in `cryptofpl-server/data/.` as a regular object. In real life this will be stored in a server. Gameweek scores were randomly generated up to gameweek 3 to allow people to play with this demo app. In reality, players wouldn't be able to calculate their total scores until the Premier League gameweek has concoluded and footballer scores have been finalized.
 
 ## 👩🏻‍💻 Development
 - Clone the repo using `git clone https://github.com/nichanank/crypto-fpl.git`
