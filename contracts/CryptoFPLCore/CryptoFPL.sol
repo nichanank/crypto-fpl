@@ -153,16 +153,22 @@ contract CryptoFPL is usingOraclize {
         ADMIN
      */
 
+    /// Allows the admin to pause certain contract functions to be called in case of emergency
+    /// Functions paused in emergency are: createGame, joinGame, commitTeam, and revealTeam
     function toggleContractPause() external isLeagueManager() {
         paused = !paused;
     }
 
+    /// Updates the live gameweek
+    /// @param _deadline time epoch of the live gameweek
     function incrementGameweek(uint _deadline) external isLeagueManager() {
         gameweek += 1;
         deadline = _deadline;
         emit LogNewGameweekBegin(gameweek, deadline);
     }
 
+    /// Returns the pause status of the contract
+    /// @return boolean of whether or not the contract is currently paused
     function isPaused() external view returns(bool) {
         return paused;
     }
