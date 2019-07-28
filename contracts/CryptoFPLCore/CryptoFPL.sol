@@ -1,6 +1,5 @@
 pragma solidity ^0.5.0;
 
-import "../OraclizeAPI.sol";
 import "./CryptoFPLAdmin.sol";
 
     /// @author Nichanan Kesonpat
@@ -61,8 +60,8 @@ contract CryptoFPL is CryptoFPLAdmin {
     mapping(address => mapping(uint => Commit)) fwdCommits;
 
     //Events
-    event LogGameCreation(address player1, uint wager, uint gameId);
-    event LogGameBegin(address player2, uint gameId, uint totalPayout);
+    event LogGameCreation(address indexed player1, uint wager, uint gameId);
+    event LogGameBegin(address indexed player2, uint gameId, uint totalPayout);
     event LogGameEnd(address winner, uint winningScore, uint losingScore);
     event LogPayoutSent(address winner, uint balance);
     event LogPlayer1TeamCommit(
@@ -157,7 +156,7 @@ contract CryptoFPL is CryptoFPLAdmin {
         stopInEmergency()
         returns(uint) 
         {
-        require(msg.value >= wager);
+        require(msg.value == wager);
         uint gameId = idGenerator;
         games[idGenerator] = Game({
             wager: wager,
@@ -216,16 +215,6 @@ contract CryptoFPL is CryptoFPLAdmin {
     /// @return the total number of games that have ever been created
     function totalGames() public view returns (uint) {
         return idGenerator;
-    }
-
-    /// Retrieves gamesIds that a player is currently active in
-    /// @return an array of gameIds that the player is active in
-    function viewActiveGames() public view returns (uint[3] memory gameIds) {
-        uint[3] memory result;
-        for(uint i = 0; i < activeGameIndex[msg.sender]; i++) {
-            result[i] = activeGames[msg.sender][i];
-        }
-        return result;
     }
 
     /* 

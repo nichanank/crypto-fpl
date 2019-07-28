@@ -139,15 +139,19 @@ contract('CryptoFPL', async (accounts) => {
 
     describe("Gameplay", async () => {
             
-      it('should return the correct number of active games for a given player', async () => {
+      it('should emit events for games that the player is currently active in', async () => {
         await instance.createGame(100, {from: player1, value: 100})
         await instance.createGame(100, {from: player1, value: 100})
         await instance.createGame(100, {from: player1, value: 100})
-        var activeGames = await instance.viewActiveGames({from: player1})
-        assert.equal(activeGames.length, 3, 'active games length should be 3')
-        assert.equal(activeGames[0].toNumber(), 0, 'first item in active games should be gameId 0')
-        assert.equal(activeGames[1].toNumber(), 1, 'second item in active games should be gameId 1')
-        assert.equal(activeGames[2].toNumber(), 2, 'third item in active games should be gameId 2')
+        var activeGamesPlayer1 = await instance.getPastEvents('LogGameCreation', {filter:{player1: player1}, fromBlock: 0, toBlock: 'latest'})
+        assert.equal(activeGamesPlayer1.length, 3, 'active games length for player1 should be 3')
+        assert.equal(activeGamesPlayer1[0].returnValues.gameId, 0, 'first item in active games should be gameId 0')
+        assert.equal(activeGamesPlayer1[1].returnValues.gameId, 1, 'second item in active games should be gameId 1')
+        assert.equal(activeGamesPlayer1[2].returnValues.gameId, 2, 'third item in active games should be gameId 2')
+        await instance.joinGame(2, {from: player2, value: 100})
+        var activeGamesPlayer2 = await instance.getPastEvents('LogGameBegin', {filter:{player2: player2}, fromBlock: 0, toBlock: 'latest'})
+        assert.equal(activeGamesPlayer2.length, 1, 'active games length for player 2 should be 1')
+        assert.equal(activeGamesPlayer2[0].returnValues.gameId, 2, 'first item in active games for player 2 should be gameId 2')
       })
       
       it('should let users commit their selected team', async () => {

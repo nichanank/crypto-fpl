@@ -14,8 +14,6 @@ contract CryptoFPLAdmin is usingOraclize {
     uint entryFee;
     uint gameweek = 0;
     uint deadline = 1565373600; // Gameweek deadline epoch
-
-    // Circuit breaker
     bool private paused = false;
 
     /// Events
@@ -30,6 +28,7 @@ contract CryptoFPLAdmin is usingOraclize {
     modifier withinDeadline() {require(!deadlinePassed, "This function can only be executed within the gameweek deadline"); _; }
 
     /// Returns the pause status of the contract
+    /// @dev Circuit breaker for contract
     /// @return boolean of whether or not the contract is currently paused
     function isPaused() external view returns(bool) {
         return paused;
@@ -61,6 +60,8 @@ contract CryptoFPLAdmin is usingOraclize {
     //     deadlinePassed = !deadlinePassed;
     // }
 
+    /// Queries the current time using Provable
+    /// @dev should be called by admin when the gameweek deadline has passed
     function toggleDeadlinePassed() external payable isLeagueManager() {
         if (oraclize_getPrice("URL") > address(this).balance) {
             emit LogNewOraclizeQuery("Please add some ETH to cover for the query fee");
@@ -70,7 +71,8 @@ contract CryptoFPLAdmin is usingOraclize {
         }
     }
 
-    /// Handles Oraclize API call response. Sets the 'deadlinePassed' variable to true if the current time exceeds the gameweek deadline.
+    /// Handles Oraclize API call response
+    /// @dev sets the 'deadlinePassed' variable to true if the current time exceeds the gameweek deadline.
     function __callback(bytes32 _oraclizeId, string memory _res) public {
         require(msg.sender == oraclize_cbAddress());
         uint timeNow = parseInt(_res);
