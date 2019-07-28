@@ -19,7 +19,7 @@ contract CryptoFPLAdmin is usingOraclize {
     /// Events
     event LogNewOraclizeQuery(string message);
     event LogNewGameweekBegin(uint gameweek, uint deadline);
-    event LogDeadlineStatusUpdated(uint gameweek, bool deadlinePassed);
+    event LogDeadlineStatusUpdated(uint gameweek, bool deadlinePassed, uint timeNow);
 
     /// Modifiers
     modifier isLeagueManager() { require(msg.sender == leagueManager, "Only the league manager can perform this action"); _; }
@@ -67,7 +67,7 @@ contract CryptoFPLAdmin is usingOraclize {
             emit LogNewOraclizeQuery("Please add some ETH to cover for the query fee");
         } else {
             emit LogNewOraclizeQuery("Oraclize query was sent, standing by...");
-            oraclizeId = oraclize_query("URL", "json(http://worldclockapi.com/api/json/est/now).currentFileTime");
+            oraclizeId = oraclize_query("URL", "json(http://worldtimeapi.org/api/timezone/Europe/London).unixTime");
         }
     }
 
@@ -79,7 +79,7 @@ contract CryptoFPLAdmin is usingOraclize {
         if (timeNow > deadline) {
             deadlinePassed = true;
         }
-        emit LogDeadlineStatusUpdated(gameweek, deadlinePassed);
+        emit LogDeadlineStatusUpdated(gameweek, deadlinePassed timeNow);
     }
 
 }

@@ -415,6 +415,11 @@ contract CryptoFPL is CryptoFPLAdmin {
         emit LogPayoutSent(msg.sender, winnings);
     }
 
+    /// Fallback function
+    function() payable {
+
+    }
+
 }
 
 
