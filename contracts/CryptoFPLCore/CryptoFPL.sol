@@ -1,6 +1,7 @@
 pragma solidity ^0.5.0;
 
 import "../OraclizeAPI.sol";
+import "./CryptoFPLAdmin.sol";
 
     /// @author Nichanan Kesonpat
     /// @title A lightweight PvP card game based on Fantasy Premier League.
@@ -18,18 +19,10 @@ import "../OraclizeAPI.sol";
         - A team selection must consist of: 1 GK, 1 DF, 1 MF, 1 FWD
     */
 
-contract CryptoFPL is usingOraclize {
+contract CryptoFPL is CryptoFPLAdmin {
 
     //Storage variables
-    address payable public leagueManager;
-    uint entryFee;
-    uint gameweek = 0;
-    uint deadline = 1565373600; // Gameweek deadline epoch
     uint idGenerator; // Keep track of game ids
-    uint latestGameId; // Keep track of recently created game mappings
-    
-    //Circuit breaker
-    bool private paused = false;
 
     //Structs
     struct Commit {
@@ -60,7 +53,6 @@ contract CryptoFPL is usingOraclize {
     mapping(address => uint) refunds; // Keeps track of refunds for players to withdraw from in case they deposited too much.
     mapping(address => uint) activeGameIndex;
     mapping(address => mapping(uint => uint)) activeGames; // Keeps track of each player's active games by mapping activeGameIndex to gameId
-    mapping(uint => uint) public recentlyCreatedGames; // Keeps track of up to 10 latest gamesIds created
     
     // Map player address to gameId and footballer selection
     mapping(address => mapping(uint => Commit)) gkCommits;
@@ -69,8 +61,6 @@ contract CryptoFPL is usingOraclize {
     mapping(address => mapping(uint => Commit)) fwdCommits;
 
     //Events
-    event LogNewOraclizeQuery(string message);
-    event LogNewGameweekBegin(uint gameweek, uint deadline);
     event LogGameCreation(address player1, uint wager, uint gameId);
     event LogGameBegin(address player2, uint gameId, uint totalPayout);
     event LogGameEnd(address winner, uint winningScore, uint losingScore);
@@ -106,25 +96,17 @@ contract CryptoFPL is usingOraclize {
     modifier validPlayer2(uint gameId) { require(msg.sender != games[gameId].player1, "Player can't join their own game"); _;}
     modifier gameIsOpen(uint gameId) { require(games[gameId].isOpen, "Game is closed"); _;}
     modifier enoughFunds(uint gameId) { require(msg.value >= games[gameId].wager, "Insufficient funds sent as wager"); _;}
-    modifier isLeagueManager() { require(msg.sender == leagueManager, "Only the league manager can perform this action"); _; }
-    modifier stopInEmergency() { require(!paused, "Cannot execute this function when the contract is paused"); _; }
-    modifier onlyInEmergency() { require(paused, "This function can only be executed if the contract has been paused"); _; }
     
     modifier bothTeamsSubmitted(uint gameId) { 
         require(games[gameId].player1TeamSubmitted == true && games[gameId].player2TeamSubmitted == true, 
         "Both players are required to have submitted a team"); 
         _; 
     }
+
     modifier bothTeamsRevealed(uint gameId) { 
         require(games[gameId].player1TeamRevealed == true && games[gameId].player2TeamRevealed == true, 
         "Both players are required to have revealed their teams"); 
         _; 
-    }
-   
-    modifier validActiveGameCount() { 
-        require(msg.sender == leagueManager || activeGameIndex[msg.sender] < 3, 
-        "Player already has 3 active games");
-         _;
     }
 
     /// Refund player 2 if they send in an amount exceeding the stated wager
@@ -132,7 +114,13 @@ contract CryptoFPL is usingOraclize {
         _;
         uint _wager = games[gameId].wager;
         uint amountToRefund = msg.value - _wager;
-        games[gameId].player2.transfer(amountToRefund);
+        refunds[msg.sender] += (amountToRefund);
+    }
+   
+    modifier validActiveGameCount() { 
+        require(msg.sender == leagueManager || activeGameIndex[msg.sender] < 3, 
+        "Player already has 3 active games");
+         _;
     }
 
     /// Verify winner for payout withdrawal
@@ -146,46 +134,7 @@ contract CryptoFPL is usingOraclize {
         leagueManager = msg.sender;
         entryFee = _entryFee;
         idGenerator = 0;
-        latestGameId = 0;
     }
-    
-    /* 
-        ADMIN
-     */
-
-    /// Allows the admin to pause certain contract functions to be called in case of emergency
-    /// Functions paused in emergency are: createGame, joinGame, commitTeam, and revealTeam
-    function toggleContractPause() external isLeagueManager() {
-        paused = !paused;
-    }
-
-    /// Updates the live gameweek
-    /// @param _deadline time epoch of the live gameweek
-    function incrementGameweek(uint _deadline) external isLeagueManager() {
-        gameweek += 1;
-        deadline = _deadline;
-        emit LogNewGameweekBegin(gameweek, deadline);
-    }
-
-    /// Returns the pause status of the contract
-    /// @return boolean of whether or not the contract is currently paused
-    function isPaused() external view returns(bool) {
-        return paused;
-    }
-
-    // function updateGameweek() public isLeagueManager() {
-    //     // oraclize_query("URL", "http://slimy-chipmunk-20.localtunnel.me/api/gameweeks/1/deadline");
-    //     oraclize_query("URL", "https://api.kraken.com/0/public/Ticker?pair=ETHXBT");
-
-    //     emit LogNewOraclizeQuery("Oraclize query was sent, standing by for the answer...");
-    // }
-
-    // function __callback(bytes32 _myid, string memory _res) public {
-    //     // require(msg.sender == oraclize_cbAddress());
-    //     gameweek += 1;
-    //     deadline = parseInt(_res);
-    //     emit LogNewGameweekBegin(gameweek, deadline);
-    // }
 
     /* 
         GAME ENTRY: Players can create a game by depositing a wager and wait for another player to join the game.
@@ -201,7 +150,13 @@ contract CryptoFPL is usingOraclize {
     /// Allows a player to create their game and stores the new game in the 'games' mapping
     /// @param wager for the game
     /// @return gameId of the newly created game in
-    function createGame(uint wager) public payable validActiveGameCount() stopInEmergency() returns(uint)  {
+    function createGame(uint wager)
+        public 
+        payable
+        validActiveGameCount()
+        stopInEmergency()
+        returns(uint) 
+        {
         require(msg.value >= wager);
         uint gameId = idGenerator;
         games[idGenerator] = Game({
@@ -220,12 +175,6 @@ contract CryptoFPL is usingOraclize {
             isFinished: false 
         });
         idGenerator += 1;
-        recentlyCreatedGames[latestGameId] = gameId;
-        if (latestGameId == 9) {
-            latestGameId = 0;
-        } else {
-            latestGameId += 1;
-        }
         activeGames[msg.sender][activeGameIndex[msg.sender]] = gameId;
         activeGameIndex[msg.sender] += 1;
         uint change = msg.value - wager;
@@ -244,7 +193,17 @@ contract CryptoFPL is usingOraclize {
     /// Allows a second player to join an open game
     /// @param gameId of the game that the player wants to join
     /// @return the gameId
-    function joinGame(uint gameId) public payable gameIsOpen(gameId) enoughFunds(gameId) checkValue(gameId) validPlayer2(gameId) validActiveGameCount() stopInEmergency() returns(uint) {
+    function joinGame(uint gameId) 
+        public
+        payable
+        gameIsOpen(gameId)
+        enoughFunds(gameId)
+        validPlayer2(gameId)
+        checkValue(gameId)
+        validActiveGameCount()
+        stopInEmergency()
+        returns(uint) 
+        {
         games[gameId].player2 = msg.sender;
         games[gameId].isOpen = false;
         balances[gameId] = games[gameId].wager * 2;
@@ -252,17 +211,6 @@ contract CryptoFPL is usingOraclize {
         activeGameIndex[msg.sender] += 1;
         emit LogGameBegin(msg.sender, gameId, balances[gameId]);
         return gameId;
-    }
-
-    /// Returns 10 latest games created
-    /// @dev retrieves the recent games from the storage array 'recentlyCreatedGames'
-    /// @return gameIds of the 10 most recently created games
-    function viewRecentlyCreatedGames() public view returns (uint[10] memory latestGames) {
-        uint[10] memory recentGames;
-        for (uint8 i = 0; i < 10; i++) {
-            recentGames[i] = recentlyCreatedGames[i];
-        }
-        return recentGames;
     }
 
     /// @return the total number of games that have ever been created
@@ -298,8 +246,9 @@ contract CryptoFPL is usingOraclize {
         uint gameId) 
         public 
         isPlayer(gameId, msg.sender) 
-        stopInEmergency() {
-
+        stopInEmergency()
+        withinDeadline() 
+        {
         gkCommits[msg.sender][gameId] = Commit({
             commit: gkHash,
             block: uint64(block.number),

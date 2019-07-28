@@ -7,13 +7,12 @@ import "../utils/Ownable.sol";
 import "../erc/erc1155/ERC1155MintBurn.sol";
 import "../erc/erc1155/ERC1155Metadata.sol";
 import "./erc1155/CryptoFPL1155BaseEnumerable.sol";
-import "../OraclizeAPI.sol";
 
-contract CryptoFPLCards is Ownable, ERC1155MintBurn, ERC1155Metadata, CryptoFPL1155BaseEnumerable, usingOraclize {
+contract CryptoFPLCards is Ownable, ERC1155MintBurn, ERC1155Metadata, CryptoFPL1155BaseEnumerable {
   
   //Storage variables
   uint32 public season;
-  uint CARDPACK_PRICE = 100 wei;
+  uint CARDPACK_PRICE = 100000000000000000 wei;
   uint CARDPACK_SIZE = 10;
 
   //Structs and Enums
@@ -61,6 +60,10 @@ contract CryptoFPLCards is Ownable, ERC1155MintBurn, ERC1155Metadata, CryptoFPL1
 
   function symbol() public pure returns(string memory) {
     return 'FPL';
+  }
+
+  function viewCardPackPrice() public view returns(uint price) {
+    return CARDPACK_PRICE;
   }
 
   //Mints footballer card pack to a user

@@ -48,6 +48,19 @@ contract('CryptoFPL', async (accounts) => {
       await catchRevert(instance.createGame(100, {from: player1, value: 100}), "player should not be able to create a game when the contract is paused")
     })
 
+    // it('should allow admin toggle deadlinePassed() and not let players commit their team if the deadline has passed', async () => {
+    //   await instance.createGame(100, {from: player1, value: 100})
+    //   await instance.toggleDeadlinePassedBackup({from: deployer})
+      
+    //   let teamHashes = {}
+    //   teamHashes['gk'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[0]))), salt)
+    //   teamHashes['def'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[1]))), salt)
+    //   teamHashes['mid'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[2]))), salt)
+    //   teamHashes['fwd'] = await instance.getSaltedHash(web3.utils.numberToHex(web3.utils.sha3(web3.utils.numberToHex(ids[3]))), salt)
+
+    //   await catchRevert(instance.commitTeam(teamHashes['gk'], teamHashes['def'], teamHashes['mid'], teamHashes['fwd'], 0, { from: player1 }))
+    // })
+
   })
 
   describe("Functions", () => {
@@ -107,23 +120,6 @@ contract('CryptoFPL', async (accounts) => {
         assert.equal(gameData.totalPayout, 200, "total payout should reflect deposited wagers from the two players")
       })
 
-      it('should only store the latest 10 games in the recentGamesMapping', async () => {
-        for (var i = 0; i < 15; i++) {
-          await instance.createGame(100, {from: deployer, value: 100})  
-        }
-        const recentGamesData = await instance.viewRecentlyCreatedGames({from: deployer})
-        assert.equal(recentGamesData.length, 10, "there should be up to 10 recently created games")
-      })
-
-      it('should override older games to keep track of games created after the 10th one', async () => {
-        for (var i = 0; i < 12; i++) {
-          await instance.createGame(100, {from: deployer, value: 100})  
-        }
-        const recentGamesData = await instance.viewRecentlyCreatedGames({from: deployer})
-        assert.equal(recentGamesData[0], 10, "oldest game should have been overwrote for the 11th game created")
-        assert.equal(recentGamesData[1], 11, "second oldest game should have been overwrote for the 12th game created")
-      })
-
       it('should return the correct number of games that have ever been created', async () => {
         for (var i = 0; i < 12; i++) {
           await instance.createGame(100, {from: deployer, value: 100})  
@@ -148,6 +144,7 @@ contract('CryptoFPL', async (accounts) => {
         await instance.createGame(100, {from: player1, value: 100})
         await instance.createGame(100, {from: player1, value: 100})
         var activeGames = await instance.viewActiveGames({from: player1})
+        assert.equal(activeGames.length, 3, 'active games length should be 3')
         assert.equal(activeGames[0].toNumber(), 0, 'first item in active games should be gameId 0')
         assert.equal(activeGames[1].toNumber(), 1, 'second item in active games should be gameId 1')
         assert.equal(activeGames[2].toNumber(), 2, 'third item in active games should be gameId 2')

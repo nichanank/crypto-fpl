@@ -77,20 +77,5 @@ contract('CryptoFPL', async (accounts) => {
     })
   
   })
-
-//     // "token owner should be able to transfer token to a non-zero address"
-//     it('token owner should be able to transfer token to a non-zero address', async () => {
-//       await contractInstance.safeTransferFrom(owner, user1, 1)
-//       let ownerBalance = await contractInstance.balanceOf(owner)
-//       let user1Balance = await contractInstance.balanceOf(user1)
-//       let newTokenOwner = await contractInstance.ownerOf(1)
-//       assert.equal(1, ownerBalance)
-//       assert.equal(1, user1Balance)
-//       assert.equal(user1, newTokenOwner)
-//     })
-
-//     // "user should not be able to transfer a token they don't own"
-//     it('user should not be able to transfer a token they don\'t own', async () => {
-//       await catchRevert(contractInstance.safeTransferFrom(user1, user2, 2))
-//     })
+  
 })
