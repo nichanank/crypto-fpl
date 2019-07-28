@@ -27,16 +27,28 @@
 - Footballer data (names, position, team, gameweek scores) is based on the [Fantasy Premier League API](https://fantasy.premierleague.com/api/element-summary/1)
 - ReactJS, NodeJS, mySQL* powers the client and backend
 
-ℹ For demonstration purposes, data has been seeded in `cryptofpl-server/data/.` as a regular object. In real life this will be stored in a server. Gameweek scores were randomly generated up to gameweek 3 to allow people to play with this demo app. In reality, players wouldn't be able to calculate their total scores until the Premier League gameweek has concoluded and footballer scores have been finalized.
+ℹ For demonstration purposes, data has been seeded in `cryptofpl-server/data/.` as a regular object. In real life this will be stored in a server. Gameweek scores were randomly generated up to gameweek 3 to allow people to play with this demo app. In reality, players wouldn't be able to calculate their total scores until the Premier League gameweek has concluded and footballer scores have been finalized.
 
 ## 👩🏻‍💻 Development
 - Clone the repo using `git clone https://github.com/nichanank/crypto-fpl.git`
 - `cd crypto-fpl` and clone the client repo using `git clone https://github.com/nichanank/cryptofpl-client.git`
 - Have a local blockchain running on port 7545 (e.g. using Ganache)
 - From the main project folder (crypto-fpl), deploy contracts with `truffle migrate --reset`
+  - If you get an `at Deployer._preFlightCheck` error upon migration, delete the `contracts` folder at `cryptofpl-client/src/contracts` folder and try `truffle migrate --reset` again
 - To start the server, navigate to the `cryptofpl-server` folder with `cd cryptofpl-server`, run `npm install` and then `npm run server`
 - To start the client, navigate to the `cryptofpl-client` folder with `cd cryptofpl-client`, run `npm install` and then `npm run start`
 - Open up your browser the project should be up on localhost:3000
 
+### Contract interaction on Remix
+In order to easily interact with the contract using [Remix](remix.ethereum.org), you can use the `truffle-flattener` package to aggregate the contract code and its parent contracts into one file and paste the file into the Remix editor.
+1. `npm install -g truffle-flattener`
+2. From the directory with your `./contracts` folder containing the Solidity files, do `truffle-flattener ./contracts/CryptoFPLCore/CryptoFPL.sol >> CryptoFPL.txt`
+3. Create a new file on Remix and name it `CryptoFPL.sol`, paste the newly created contents of `CryptoFPL.txt` into this file and save. Repeat with the CryptoFPLCards contract:
+- `truffle-flattener ./contracts/CryptoFPLCore/CryptoFPLCards.sol >> CryptoFPLCards.txt`
+- Create another file on Remix and name it `CryptoFPLCards.sol`, paste contents of `CryptoFPLCards.txt` into here
+4. Deploy the two contracts on Remix and you should be good to go
+If you have Ganache running, choose `Web3 provider` as your environment and connect to the port hosting the local blockchain (the default is `http://localhost:8545`). Otherwise you can select the provided `Javascript VM`
+
 ## ✅ Testing
 - You can run the tests by running `truffle test` from the CryptoFPL directory
+- If you get an `at Deployer._preFlightCheck` error upon migrate, delete the `contracts` folder at`cryptofpl-client/src/contracts` folder and try `truffle test` again
