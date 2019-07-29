@@ -28,7 +28,7 @@
 - ReactJS, NodeJS, mySQL* powers the client and backend
 
 ### CryptoFPL Footballer Cards as Multi-Fungible Tokens
-- CryptoFPLCards inherits from the (ERC1155 implementation)[https://github.com/horizon-games/multi-token-standard] by [Horizon Games](https://horizongames.net/). The EIP discussion for the Multi-Fungible Token Standard can be found [here](https://github.com/ethereum/EIPs/issues/1155)
+- CryptoFPLCards inherits from the [ERC1155 implementation](https://github.com/horizon-games/multi-token-standard) by [Horizon Games](https://horizongames.net/). The EIP discussion for the Multi-Fungible Token Standard can be found [here](https://github.com/ethereum/EIPs/issues/1155)
 
 ### Admin Features and Provable API
 - The CryptoFPL league admin (contract deployer) can toggle the `deadlinePassed` boolean storage variable by calling `toggleDeadlinePassed`. This method uses a [Provable API](https://docs.provable.xyz) query to obtain the current time (GMT+1) and sets `deadlinePassed` to true if the UNIX timestamp surpasses the `deadline` variable. At the time of writing, there isn't a bridge to link the Provable API to a private development blockchain, therefore this feature will only work when called on testnet. If you call this function whilst on a private blockchain you will get a `VM Exception while processing transaction: revert` error.
