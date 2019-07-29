@@ -107,4 +107,9 @@ contract CryptoFPLCards is Ownable, ERC1155MintBurn, ERC1155Metadata, CryptoFPL1
     return positions[tokenId];
   }
 
+  /// Fallback function
+    function() external payable {
+
+    }
+
 }

@@ -416,7 +416,7 @@ contract CryptoFPL is CryptoFPLAdmin {
     }
 
     /// Fallback function
-    function() payable {
+    function() external payable {
 
     }
 

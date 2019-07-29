@@ -79,7 +79,7 @@ contract CryptoFPLAdmin is usingProvable {
         if (timeNow > deadline) {
             deadlinePassed = true;
         }
-        emit LogDeadlineStatusUpdated(gameweek, deadlinePassed timeNow);
+        emit LogDeadlineStatusUpdated(gameweek, deadlinePassed, timeNow);
     }
 
 }
