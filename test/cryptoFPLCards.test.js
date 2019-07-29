@@ -8,9 +8,10 @@ const from = Math.floor(new Date() / 1000)
 const to = from + timePeriodInSeconds
 
 contract('CryptoFPL', async (accounts) => {
-  const owner = accounts[0]
-  const user1 = accounts[1]
-  const user2 = accounts[2]
+  const deployer = accounts[0]
+  const player1 = accounts[1]
+  const player2 = accounts[2]
+  const player3 = accounts[3]
   const cardPrice = 100000000000000000
   const catchRevert = require("./exceptionHelpers.js").catchRevert
   
@@ -22,7 +23,7 @@ contract('CryptoFPL', async (accounts) => {
   
     it('should check to make sure that the owner of the contract is the msg.sender', async () => {
       callOwner = await instance.owner()
-      assert.equal(callOwner, owner)
+      assert.equal(callOwner, deployer)
     })
 
     it('should have the correct contract name and symbol', async () => {
@@ -37,15 +38,26 @@ contract('CryptoFPL', async (accounts) => {
   })
 
   describe("Functions", async () => {
+
+    it('should give refunds if user deposits more than the card pack prize', async () => {
+      let ids = [1, 2, 3, 4]
+      let positions = [1, 2, 3, 4]
+      let amounts = [1, 10, 15, 20]
+      await instance.mintTeam(player1, ids, positions, amounts, {from: player1, value: cardPrice + 100})
+      const beforeBalance = await web3.eth.getBalance(player1)
+      await instance.withdrawRefund({from: player1})
+      const afterBalance = await web3.eth.getBalance(player1)
+      assert.equal((Number(afterBalance.slice(-4))), Number(beforeBalance.slice(-4)) + 100, "overpayment should have been refunded")
+    })
     
     it('should mint a team to a user if given sufficient payment', async () => {
       let ids = [1, 2, 3, 4]
       let positions = [1, 2, 3, 4]
       let amounts = [1, 10, 15, 20]
-      await instance.mintTeam(user2, ids, positions, amounts, {value: cardPrice})
-      ownerTokenBalance1 = await instance.balanceOf(user2, 1)
-      ownerTokenBalance2 = await instance.balanceOf(user2, 2)
-      ownerTokenBalance3 = await instance.balanceOf(user2, 3)
+      await instance.mintTeam(player2, ids, positions, amounts, {value: cardPrice})
+      ownerTokenBalance1 = await instance.balanceOf(player2, 1)
+      ownerTokenBalance2 = await instance.balanceOf(player2, 2)
+      ownerTokenBalance3 = await instance.balanceOf(player2, 3)
       assert.equal(ownerTokenBalance1, 1, 'user should own 1 of token id 1')
       assert.equal(ownerTokenBalance2, 10, 'user should own 10 of token id 2')
       assert.equal(ownerTokenBalance3, 15, 'user should own 15 of token id 3')
@@ -55,7 +67,7 @@ contract('CryptoFPL', async (accounts) => {
       let ids = [15, 21, 39, 94]
       let positions = [1, 2, 3, 4]
       let amounts = [1, 1, 1, 1]
-      await instance.mintTeam(user1, ids, positions, amounts, {value: cardPrice})
+      await instance.mintTeam(player1, ids, positions, amounts, {value: cardPrice})
       footballer1Position = await instance.positions(15)
       footballer2Position = await instance.positions(21)
       footballer3Position = await instance.positions(94)
@@ -68,12 +80,12 @@ contract('CryptoFPL', async (accounts) => {
       let ids = [1, 2, 3, 4]
       let positions = [1, 2, 3, 4]
       let amounts = [1, 10, 15, 20]
-      await instance.mintTeam(owner, ids, positions, amounts, {value: cardPrice})
-      let retVal = await instance.ownedTokens(owner)
-      assert.equal(retVal[0].toNumber(), 1, 'owner should own token id 1')
-      assert.equal(retVal[1].toNumber(), 2, 'owner should own token id 2')
-      assert.equal(retVal[2].toNumber(), 3, 'owner should own token id 3')
-      assert.equal(retVal.length, 4, 'owner should own 4 unique footballers')
+      await instance.mintTeam(player3, ids, positions, amounts, {value: cardPrice})
+      let retVal = await instance.ownedTokens(player3)
+      assert.equal(retVal[0].toNumber(), 1, 'player3 should own token id 1')
+      assert.equal(retVal[1].toNumber(), 2, 'player3 should own token id 2')
+      assert.equal(retVal[2].toNumber(), 3, 'player3 should own token id 3')
+      assert.equal(retVal.length, 4, 'player3 should own 4 unique footballers')
     })
   
   })

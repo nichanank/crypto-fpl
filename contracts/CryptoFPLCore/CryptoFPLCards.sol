@@ -40,6 +40,7 @@ contract CryptoFPLCards is Ownable, ERC1155MintBurn, ERC1155Metadata, CryptoFPL1
   mapping(uint => Position) public positions;
   mapping(uint => Rating) public ratings;
   mapping(uint => bool) private positionInitialized; //Only updates footballer positions for new ids.
+  mapping(address => uint) refunds; // Keeps track of refunds for players to withdraw from in case they deposited too much.
 
   //Events
   // event PlayerMinted(uint id, Position position, address owner);
@@ -82,10 +83,16 @@ contract CryptoFPLCards is Ownable, ERC1155MintBurn, ERC1155Metadata, CryptoFPL1
         positionInitialized[ids[i]] = true;
       }
     }
-
-    uint change = msg.value - (CARDPACK_PRICE);
-    msg.sender.transfer(change);
+    uint change = msg.value - CARDPACK_PRICE;
+    refunds[msg.sender] += change;
     emit LogTeamMinted(ids, _owner);
+  }
+
+  /// Lets the user withdraw the refund in case of overpayment
+  function withdrawRefund() external {
+      uint refund = refunds[msg.sender];
+      refunds[msg.sender] = 0;
+      msg.sender.transfer(refund);
   }
   
   function _updatePosition(uint tokenId, uint position) private {
@@ -108,8 +115,8 @@ contract CryptoFPLCards is Ownable, ERC1155MintBurn, ERC1155Metadata, CryptoFPL1
   }
 
   /// Fallback function
-    function() external payable {
+  function () external payable {
 
-    }
+  }
 
 }
