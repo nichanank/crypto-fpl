@@ -45,7 +45,7 @@
   - If you get an `at Deployer._preFlightCheck` error upon migration, delete the `contracts` folder at `cryptofpl-client/src/contracts` folder and try `truffle migrate --reset` again
 - To start the server, navigate to the `cryptofpl-server` folder with `cd cryptofpl-server`, run `npm install` and then `npm run server`
 - To start the client, navigate to the `cryptofpl-client` folder with `cd cryptofpl-client`, run `npm install` and then `npm run start`
-- Open up your browser the project should be up on localhost:3000
+- Open up your browser and the project should be up on localhost:3000
 
 ### Contract interaction on Remix
 In order to easily interact with the contract using [Remix](remix.ethereum.org), you can use the `truffle-flattener` package to aggregate the contract code and its parent contracts into one file and paste the file into the Remix editor.
