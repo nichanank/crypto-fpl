@@ -10,6 +10,7 @@
 
 - Players can be in up to 3 active games at a time
 - A submitted squad must consist of 1 Goalkeeper, 1 Defender, 1 Midfield, and 1 Forward
+- Players can submit a team as many times as they want *before* the gameweek deadline. But they must ensure to take note of the *latest* submitted team and salt in order to successfully reveal their team.
 
 ### 📖 How to Play
 
