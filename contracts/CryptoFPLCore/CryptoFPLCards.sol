@@ -1,7 +1,7 @@
 pragma solidity ^0.5.0;
 
-    /// @author Nichanan Kesonpat
-    /// @title Base multi-fungible token contract for cards of CryptoFPL. A PvP card game based on Fantasy Premier League.
+/// @author Nichanan Kesonpat
+/// @title Base multi-fungible token contract for cards of CryptoFPL. A PvP card game based on Fantasy Premier League.
 
 import "../utils/Ownable.sol";
 import "../erc/erc1155/ERC1155MintBurn.sol";
@@ -55,6 +55,31 @@ contract CryptoFPLCards is Ownable, ERC1155MintBurn, ERC1155Metadata, CryptoFPL1
     season = _season;
   }
 
+  /// Fallback function
+  function () external payable {
+
+  }
+
+  /// Allows league admin to withdraw funds from the contract.
+  function withdrawFunds() external onlyOwner() {
+    uint availableFunds = address(this).balance;
+    msg.sender.transfer(availableFunds);
+  }
+
+  /// Lets the user withdraw the refund in case of overpayment
+  function withdrawRefund() external {
+    uint refund = refunds[msg.sender];
+    refunds[msg.sender] = 0;
+    msg.sender.transfer(refund);
+  }
+
+  /// Retrieves the Position of a footballer
+  /// @param tokenId of the footballer in question
+  /// @return the Position enum of the footballer
+  function positionOf(uint tokenId) external view returns(Position) {
+    return positions[tokenId];
+  }
+
   function name() public pure returns(string memory) {
     return 'CryptoFPL';
   }
@@ -67,8 +92,12 @@ contract CryptoFPLCards is Ownable, ERC1155MintBurn, ERC1155Metadata, CryptoFPL1
     return CARDPACK_PRICE;
   }
 
-  //Mints footballer card pack to a user
-  function mintTeam(address _owner, uint[] calldata ids, uint[] calldata playerPositions, uint[] calldata amounts) external payable {
+  /// Mints footballer card pack to a user
+  /// @param _owner address to mint to
+  /// @param ids of the footballers, as per the FPL API
+  /// @param playerPositions of the footballers 1 = GK, 2 = DEF, 3 = MID, 4 = FWD
+  /// @param amounts to mint for each footballer ID
+  function mintTeam(address _owner, uint[] memory ids, uint[] memory playerPositions, uint[] memory amounts) public payable {
     require(msg.value >= CARDPACK_PRICE, "Insufficient funds to mint team");
     require (ids.length != CARDPACK_SIZE, "Invalid number of cards in pack");
     require (ids.length == playerPositions.length, "Player ids and positions array size mismatch");
@@ -87,14 +116,10 @@ contract CryptoFPLCards is Ownable, ERC1155MintBurn, ERC1155Metadata, CryptoFPL1
     refunds[msg.sender] += change;
     emit LogTeamMinted(ids, _owner);
   }
-
-  /// Lets the user withdraw the refund in case of overpayment
-  function withdrawRefund() external {
-      uint refund = refunds[msg.sender];
-      refunds[msg.sender] = 0;
-      msg.sender.transfer(refund);
-  }
   
+  /// Updates the position of a footballer
+  /// @param tokenId of the footballer
+  /// @param position of the footballer to be updated to
   function _updatePosition(uint tokenId, uint position) private {
     require(position == 1 || position == 2 || position == 3 || position == 4);
     
@@ -110,13 +135,5 @@ contract CryptoFPLCards is Ownable, ERC1155MintBurn, ERC1155Metadata, CryptoFPL1
     }
   }
 
-  function positionOf(uint tokenId) external view returns(Position) {
-    return positions[tokenId];
-  }
-
-  /// Fallback function
-  function () external payable {
-
-  }
 
 }

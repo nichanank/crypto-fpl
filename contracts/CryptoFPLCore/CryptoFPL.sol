@@ -116,6 +116,7 @@ contract CryptoFPL is CryptoFPLAdmin {
         refunds[msg.sender] += (amountToRefund);
     }
    
+    /// Checks how many games a player is active in. Passes if they are in 3 games or less
     modifier validActiveGameCount() { 
         require(msg.sender == leagueManager || activeGameIndex[msg.sender] < 3, 
         "Player already has 3 active games");
@@ -133,6 +134,38 @@ contract CryptoFPL is CryptoFPLAdmin {
         leagueManager = msg.sender;
         entryFee = _entryFee;
         idGenerator = 0;
+    }
+
+    /// Fallback function
+    function() external payable {
+
+    }
+
+    /// Lets the user withdraw the refund in case of overpayment or game cancellation
+    function withdrawRefund() external {
+        uint refund = refunds[msg.sender];
+        refunds[msg.sender] = 0;
+        msg.sender.transfer(refund);
+    }
+
+    /// Allows the game winner to withdraw their payout
+    /// @param gameId of the game the caller wants to withdraw payout for
+    function withdrawPayout(uint gameId) external isWinner(gameId) {
+        uint winnings = balances[gameId];
+        balances[gameId] = 0;
+        games[gameId].isFinished = true;
+        activeGames[msg.sender][activeGameIndex[msg.sender]] = 0;
+        activeGames[games[gameId].player2][activeGameIndex[games[gameId].player2]] = 0;
+        activeGameIndex[msg.sender] -= 1;
+        activeGameIndex[games[gameId].player2] -= 1;
+        msg.sender.transfer(winnings);
+        emit LogPayoutSent(msg.sender, winnings);
+    }
+
+    /// Allows league admin to withdraw funds from the contract.
+    function withdrawFunds() public isLeagueManager() {
+        uint availableFunds = address(this).balance;
+        msg.sender.transfer(availableFunds);
     }
 
     /* 
@@ -180,13 +213,6 @@ contract CryptoFPL is CryptoFPLAdmin {
         refunds[msg.sender] += change;
         emit LogGameCreation(msg.sender, wager, gameId);
         return gameId;
-    }
-
-    /// Lets the user withdraw the refund in case of overpayment or game cancellation
-    function withdrawRefund() external {
-        uint refund = refunds[msg.sender];
-        refunds[msg.sender] = 0;
-        msg.sender.transfer(refund);
     }
 
     /// Allows a second player to join an open game
@@ -325,13 +351,13 @@ contract CryptoFPL is CryptoFPLAdmin {
             games[gameId].player1Score = totalScore;
             games[gameId].player1TeamRevealed = true;
             if (games[gameId].player2TeamRevealed) {
-                declareWinner(gameId);
+                _declareWinner(gameId);
             }
         } else {
             games[gameId].player2Score = totalScore;
             games[gameId].player2TeamRevealed = true;
             if (games[gameId].player1TeamRevealed) {
-                declareWinner(gameId);
+                _declareWinner(gameId);
             }
         }
         emit LogTeamReveal(msg.sender, gkReveal, defReveal, midReveal, fwdReveal, salt);
@@ -377,19 +403,6 @@ contract CryptoFPL is CryptoFPLAdmin {
         }
     }
 
-    /// Sets the winner for a given game once both teams have been revealed
-    /// @param gameId for the active game
-    function declareWinner(uint gameId) internal bothTeamsRevealed(gameId) {
-        if (games[gameId].player1Score > games[gameId].player2Score) {
-            games[gameId].player1Wins = true;
-        } else if (games[gameId].player1Score < games[gameId].player2Score) {
-            games[gameId].player2Wins = true;
-        } else {
-            games[gameId].player1Wins = true;
-            games[gameId].player2Wins = true;
-        }
-    }
-
     /// Retrives the winner for a given game
     /// @param gameId for the game you want to see the winner of
     /// @return address of the winner
@@ -400,24 +413,18 @@ contract CryptoFPL is CryptoFPLAdmin {
             return games[gameId].player2;
         }
     }
-  
-    /// Allows the game winner to withdraw their payout
-    /// @param gameId of the game the caller wants to withdraw payout for
-    function withdrawPayout(uint gameId) external isWinner(gameId) {
-        uint winnings = balances[gameId];
-        balances[gameId] = 0;
-        games[gameId].isFinished = true;
-        activeGames[msg.sender][activeGameIndex[msg.sender]] = 0;
-        activeGames[games[gameId].player2][activeGameIndex[games[gameId].player2]] = 0;
-        activeGameIndex[msg.sender] -= 1;
-        activeGameIndex[games[gameId].player2] -= 1;
-        msg.sender.transfer(winnings);
-        emit LogPayoutSent(msg.sender, winnings);
-    }
 
-    /// Fallback function
-    function() external payable {
-
+    /// Sets the winner for a given game once both teams have been revealed
+    /// @param gameId for the active game
+    function _declareWinner(uint gameId) internal bothTeamsRevealed(gameId) {
+        if (games[gameId].player1Score > games[gameId].player2Score) {
+            games[gameId].player1Wins = true;
+        } else if (games[gameId].player1Score < games[gameId].player2Score) {
+            games[gameId].player2Wins = true;
+        } else {
+            games[gameId].player1Wins = true;
+            games[gameId].player2Wins = true;
+        }
     }
 
 }
