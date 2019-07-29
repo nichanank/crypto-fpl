@@ -1,15 +1,15 @@
 pragma solidity ^0.5.0;
 
-import "../OraclizeAPI.sol";
+import "../ProvableAPI.sol";
 
     /// @author Nichanan Kesonpat
     /// @title Admin functions for CryptoFPL
 
-contract CryptoFPLAdmin is usingOraclize {
+contract CryptoFPLAdmin is usingProvable {
 
     /// Storage variables
     address payable public leagueManager;
-    bytes32 public oraclizeId;
+    bytes32 public provableId;
     bool deadlinePassed = false;
     uint entryFee;
     uint gameweek = 0;
@@ -17,7 +17,7 @@ contract CryptoFPLAdmin is usingOraclize {
     bool private paused = false;
 
     /// Events
-    event LogNewOraclizeQuery(string message);
+    event LogNewProvableQuery(string message);
     event LogNewGameweekBegin(uint gameweek, uint deadline);
     event LogDeadlineStatusUpdated(uint gameweek, bool deadlinePassed, uint timeNow);
 
@@ -55,26 +55,26 @@ contract CryptoFPLAdmin is usingOraclize {
         emit LogNewGameweekBegin(gameweek, deadline);
     }
 
-    // /// Backup function to toggle deadline if oraclize query fails
+    // /// Backup function to toggle deadline if provable query fails
     // function toggleDeadlinePassedBackup() external isLeagueManager() {
     //     deadlinePassed = !deadlinePassed;
     // }
 
-    /// Queries the current time using Provable
+    /// Queries the current time (GMT+1) using Provable
     /// @dev should be called by admin when the gameweek deadline has passed
     function toggleDeadlinePassed() external payable isLeagueManager() {
-        if (oraclize_getPrice("URL") > address(this).balance) {
-            emit LogNewOraclizeQuery("Please add some ETH to cover for the query fee");
+        if (provable_getPrice("URL") > address(this).balance) {
+            emit LogNewProvableQuery("Please add some ETH to cover for the query fee");
         } else {
-            emit LogNewOraclizeQuery("Oraclize query was sent, standing by...");
-            oraclizeId = oraclize_query("URL", "json(http://worldtimeapi.org/api/timezone/Europe/London).unixTime");
+            emit LogNewProvableQuery("provable query was sent, standing by...");
+            provableId = provable_query("URL", "json(http://worldtimeapi.org/api/timezone/Europe/London).unixTime");
         }
     }
 
-    /// Handles Oraclize API call response
+    /// Handles ProvableAPI call response
     /// @dev sets the 'deadlinePassed' variable to true if the current time exceeds the gameweek deadline.
-    function __callback(bytes32 _oraclizeId, string memory _res) public {
-        require(msg.sender == oraclize_cbAddress());
+    function __callback(bytes32 _provableId, string memory _res) public {
+        require(msg.sender == provable_cbAddress());
         uint timeNow = parseInt(_res);
         if (timeNow > deadline) {
             deadlinePassed = true;
