@@ -60,3 +60,9 @@ If you have Ganache running, choose `Web3 provider` as your environment and conn
 ## ✅ Testing
 - You can run the tests by running `truffle test` from the CryptoFPL directory
 - If you get an `at Deployer._preFlightCheck` error upon migrate, delete the `contracts` folder at`cryptofpl-client/src/contracts` folder and try `truffle test` again
+
+## 🚀 Future Goals & TODOs
+- Host immutable footballer data for a given season on IPFS
+- Add ENS capability to resolve human-readable names to Ethereum addresses
+- Implement upgradable design or autodeprecation
+- Add league admin features to the client web app
