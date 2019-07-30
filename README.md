@@ -38,14 +38,37 @@
 ℹ For demonstration purposes, data has been seeded in `cryptofpl-server/data/.` as a regular object. In real life this will be stored in a server. Gameweek scores were randomly generated up to gameweek 3 to allow people to play with this demo app. In reality, players wouldn't be able to calculate their total scores until the Premier League gameweek has concluded and footballer scores have been finalized.
 
 ## 👩🏻‍💻 Development
+
+### Prerequisites
+- Node v10.5.0
+- Solidity v0.5.0 (solc-js)
+- Truffle v5.0.7 (core: 5.0.7)
+
+### Setup
 - Clone the repo using `git clone https://github.com/nichanank/crypto-fpl.git`
 - `cd crypto-fpl` and clone the client repo using `git clone https://github.com/nichanank/cryptofpl-client.git`
-- Have a local blockchain running on port 7545 (e.g. using Ganache)
+- Have a local blockchain running on port 7545 (e.g. using [Ganache](https://www.trufflesuite.com/ganache))
 - From the main project folder (crypto-fpl), deploy contracts with `truffle migrate --reset`
   - If you get an `at Deployer._preFlightCheck` error upon migration, delete the `contracts` folder at `cryptofpl-client/src/contracts` folder and try `truffle migrate --reset` again
-- To start the server, navigate to the `cryptofpl-server` folder with `cd cryptofpl-server`, run `npm install` and then `npm run server`
-- To start the client, navigate to the `cryptofpl-client` folder with `cd cryptofpl-client`, run `npm install` and then `npm run start`
+
+#### To start the server:
+- Navigate to the `cryptofpl-server` folder with `cd cryptofpl-server`
+- Run `npm install` and then `npm run server`
+#### To start the client:
+- Navigate to the `cryptofpl-client` folder with `cd cryptofpl-client`
+- Run `npm install` and then `npm run start`
 - Open up your browser and the project should be up on localhost:3000
+
+### Contract interaction on a local blockchain
+- Ensure your browser has a plugin (e.g. [Metamask](https://metamask.io/)) that allows you to interact with the Ethereum blockchain
+- Ensure you have a local blockchain running (e.g. on Ganache)
+- Select *Localhost:8545* or *Custom RPC* depending on which port your Ganache blockchain is running on
+- Interact with the web interface
+
+### Contract interaction on Rinkeby Testnet
+- Ensure your browser has a plugin (e.g. [Metamask](https://metamask.io/)) that allows you to interact with the Ethereum blockchain
+- Select *Rinkeby Test Network* and choose a Metamask account that has some testnet ether. You can obtain some Rinkeby testnet ether via [this faucet](https://faucet.rinkeby.io)
+- Interact with the web interface
 
 ### Contract interaction on Remix
 In order to easily interact with the contract using [Remix](remix.ethereum.org), you can use the `truffle-flattener` package to aggregate the contract code and its parent contracts into one file and paste the file into the Remix editor.
