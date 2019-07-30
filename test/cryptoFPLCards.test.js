@@ -7,7 +7,7 @@ const timePeriodInSeconds = 3600
 const from = Math.floor(new Date() / 1000)
 const to = from + timePeriodInSeconds
 
-contract('CryptoFPL', async (accounts) => {
+contract('CryptoFPLCards', async (accounts) => {
   const deployer = accounts[0]
   const player1 = accounts[1]
   const player2 = accounts[2]
@@ -38,17 +38,6 @@ contract('CryptoFPL', async (accounts) => {
   })
 
   describe("Functions", async () => {
-
-    it('should give refunds if user deposits more than the card pack prize', async () => {
-      let ids = [1, 2, 3, 4]
-      let positions = [1, 2, 3, 4]
-      let amounts = [1, 10, 15, 20]
-      await instance.mintTeam(player1, ids, positions, amounts, {from: player1, value: cardPrice + 100})
-      const beforeBalance = await web3.eth.getBalance(player1)
-      await instance.withdrawRefund({from: player1})
-      const afterBalance = await web3.eth.getBalance(player1)
-      assert.equal((Number(afterBalance.slice(-4))), Number(beforeBalance.slice(-4)) + 100, "overpayment should have been refunded")
-    })
     
     it('should mint a team to a user if given sufficient payment', async () => {
       let ids = [1, 2, 3, 4]

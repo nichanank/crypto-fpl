@@ -154,9 +154,9 @@ contract CryptoFPL is CryptoFPLAdmin {
         uint winnings = balances[gameId];
         balances[gameId] = 0;
         games[gameId].isFinished = true;
-        activeGames[msg.sender][activeGameIndex[msg.sender]] = 0;
+        activeGames[games[gameId].player1][activeGameIndex[games[gameId].player1]] = 0;
         activeGames[games[gameId].player2][activeGameIndex[games[gameId].player2]] = 0;
-        activeGameIndex[msg.sender] -= 1;
+        activeGameIndex[games[gameId].player1] -= 1;
         activeGameIndex[games[gameId].player2] -= 1;
         msg.sender.transfer(winnings);
         emit LogPayoutSent(msg.sender, winnings);
